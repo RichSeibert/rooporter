@@ -140,7 +140,7 @@ if __name__ == "__main__":
     year_month_date = datetime.datetime.now().strftime("%Y_%m_%d")
     logging.basicConfig(
         level=log_level,
-		filename = 'rooporter' + year_month_date + '.log',
+		filename = 'rooporter_' + year_month_date + '.log',
         format='%(asctime)s - %(levelname)s - %(message)s',
 		datefmt='%H:%M:%S'
     )
