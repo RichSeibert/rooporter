@@ -3,9 +3,9 @@
 if grep -q "Red Hat" /etc/redhat-release; then
     sudo dnf install vim tmux git cmake g++ htop -y
 else
-    sudo apt update
-    sudo apt upgrade
-    sudo apt install vim tmux git cmake g++ htop -y
+    apt update
+    apt upgrade
+    apt install vim tmux git cmake g++ htop -y
 fi
 
 python -m venv .venv
