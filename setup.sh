@@ -4,7 +4,7 @@ if grep -q "Red Hat" /etc/redhat-release; then
     sudo dnf install vim tmux git cmake g++ htop -y
 else
     apt update
-    apt upgrade
+    apt upgrade -y
     apt install vim tmux git cmake g++ htop -y
 fi
 
@@ -20,6 +20,9 @@ cmake -B build -DGGML_CUDA=ON
 # Change "-j" arg to number of cores
 cmake --build build --config Release -j 8
 cd ..
+
+mkdir models
+huggingface-cli download bartowski/Llama-3.1-8B-Lexi-Uncensored-V2-GGUF --local-dir ./models
 
 git clone https://github.com/myshell-ai/MeloTTS.git
 cd MeloTTS
