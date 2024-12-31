@@ -2,11 +2,11 @@
 
 # TODO figure out how to save this off into workspace dir so it's not deleted
 if grep -q "Red Hat" /etc/redhat-release; then
-    sudo dnf install vim tmux git cmake g++ htop -y
+    sudo dnf install ffmpeg vim tmux git cmake g++ htop -y
 else
     apt update
     apt upgrade -y
-    apt install vim tmux git cmake g++ htop -y
+    apt install ffmpeg vim tmux git cmake g++ htop -y
 fi
 
 if [ ! -d ".venv" ]; then
@@ -17,6 +17,7 @@ if [ ! -d ".venv" ]; then
     #pip install -r requirements.txt
     pip install bs4
     pip install torch
+    pip install torchvideo
     pip install flash-attn
 else
     source .venv/bin/activate
@@ -50,6 +51,12 @@ if [ ! -d "HunyuanVideo" ]; then
     cd HunyuanVideo
     pip install -r requirements.txt
     huggingface-cli download tencent/HunyuanVideo --local-dir ./ckpts
+    cd ckpts
+    huggingface-cli download xtuner/llava-llama-3-8b-v1_1-transformers --local-dir ./llava-llama-3-8b-v1_1-transformers
+    cd ..
+    python hyvideo/utils/preprocess_text_encoder_tokenizer_utils.py --input_dir ckpts/llava-llama-3-8b-v1_1-transformers --output_dir ckpts/text_encoder
+    cd ckpts
+    huggingface-cli download openai/clip-vit-large-patch14 --local-dir ./text_encoder_2
     cd ..
 fi
 

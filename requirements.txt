@@ -1,4 +1,5 @@
 bs4
 huggingface_hub[cli]
 torch
+torchvideo
 flash-attn

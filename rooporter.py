@@ -3,11 +3,104 @@ from bs4 import BeautifulSoup
 import logging
 import argparse
 import datetime
-import pathlib
+from pathlib import Path
 import subprocess
 
+def process_videos_and_audio(audio_video_mapping, final_output_file):
+    """
+    Combines video files associated with audio files, adds the audio, 
+    and combines all the resulting videos into one.
+
+    Args:
+        audio_video_mapping (dict): Mapping where keys are audio file paths 
+                                    and values are lists of associated video file paths.
+        final_output_file (str): Path to the final combined video file.
+
+    Returns:
+        bool: True if the operation was successful, False otherwise.
+    """
+    try:
+        intermediate_videos = []
+
+        # Process each audio and associated video files
+        for audio_file, video_files in audio_video_mapping.items():
+            audio_file = Path(audio_file)
+            video_files = [Path(video) for video in video_files]
+            
+            # Check if all files exist
+            for file in [audio_file] + video_files:
+                if not file.exists():
+                    print(f"Error: File not found: {file}")
+                    return False
+            
+            # Create a temporary file list for video concatenation
+            temp_list_file = Path("video_list.txt")
+            with temp_list_file.open("w") as f:
+                for video in video_files:
+                    f.write(f"file '{video.resolve()}'\n")
+
+            # Combine videos associated with the audio file
+            combined_video = Path(f"combined_{audio_file.stem}.mp4")
+            combine_command = [
+                "ffmpeg",
+                "-f", "concat",
+                "-safe", "0",
+                "-i", str(temp_list_file),
+                "-c", "copy",
+                str(combined_video)
+            ]
+            subprocess.run(combine_command, check=True)
+
+            # Add the audio to the combined video
+            audio_video_output = Path(f"output_{audio_file.stem}.mp4")
+            final_command = [
+                "ffmpeg",
+                "-i", str(combined_video),
+                "-i", str(audio_file),
+                "-c:v", "copy",
+                "-c:a", "aac",
+                "-strict", "experimental",
+                str(audio_video_output)
+            ]
+            subprocess.run(final_command, check=True)
+
+            # Clean up intermediate video and add to the list for final combination
+            combined_video.unlink()  # Remove intermediate combined video
+            intermediate_videos.append(audio_video_output)
+
+            # Clean up temporary list file
+            temp_list_file.unlink()
+
+        # Combine all processed videos into one final output
+        final_list_file = Path("final_video_list.txt")
+        with final_list_file.open("w") as f:
+            for video in intermediate_videos:
+                f.write(f"file '{video.resolve()}'\n")
+
+        combine_all_command = [
+            "ffmpeg",
+            "-f", "concat",
+            "-safe", "0",
+            "-i", str(final_list_file),
+            "-c", "copy",
+            str(final_output_file)
+        ]
+        subprocess.run(combine_all_command, check=True)
+
+        # Clean up intermediate videos and the final list file
+        for video in intermediate_videos:
+            video.unlink()
+        final_list_file.unlink()
+
+        print(f"Final combined video saved to {final_output_file}")
+        return True
+
+    except subprocess.CalledProcessError as e:
+        print(f"Error during ffmpeg execution: {e}")
+        return False
+
 def llm_summarize_articles(articles):
-    repo_path = pathlib.Path(__file__).parent.as_posix()
+    repo_path = Path(__file__).parent.as_posix()
     llamaCpp_file_path = repo_path + "/llama.cpp/build/bin/llama-cli"
     model_file_path = repo_path + "/models/Llama-3.1-8B-Lexi-Uncensored-V2-Q6_K_L.gguf"
     cpu_threads = "8"
