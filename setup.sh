@@ -11,11 +11,16 @@ fi
 
 if [ ! -d ".venv" ]; then
     python -m venv .venv
+    source .venv/bin/activate
     pip install --upgrade pip wheel setuptools
-    # TODO torch and flash-attn still need to be install manually
-    pip install -r requirements.txt
+    # TODO torch and flash-attn don't install right when using requirements.txt
+    #pip install -r requirements.txt
+    pip install bs4
+    pip install torch
+    pip install flash-attn
+else
+    source .venv/bin/activate
 fi
-source .venv/bin/activate
 
 if [ ! -d "llama.cpp" ]; then
     git clone https://github.com/ggerganov/llama.cpp.git
@@ -29,7 +34,7 @@ fi
 
 if [ ! -d "models" ]; then
     mkdir models
-    huggingface-cli download bartowski/Llama-3.1-8B-Lexi-Uncensored-V2-GGUF --local-dir ./models
+    huggingface-cli download bartowski/Llama-3.1-8B-Lexi-Uncensored-V2-GGUF Llama-3.1-8B-Lexi-Uncensored-V2-Q8_0.gguf --local-dir ./models
 fi
 
 if [ ! -d "MeloTTS" ]; then
@@ -43,7 +48,7 @@ fi
 if [ ! -d "HunyuanVideo" ]; then
     git clone https://github.com/Tencent/HunyuanVideo.git
     cd HunyuanVideo
-    pip install requirements.txt
+    pip install -r requirements.txt
     huggingface-cli download tencent/HunyuanVideo --local-dir ./ckpts
     cd ..
 fi
