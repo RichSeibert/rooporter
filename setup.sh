@@ -19,9 +19,11 @@ if [ ! -d ".venv" ]; then
     pip install torch
     pip install torchvideo
     pip install flash-attn
+    python install -e .
 else
     source .venv/bin/activate
 fi
+
 
 if [ ! -d "llama.cpp" ]; then
     git clone https://github.com/ggerganov/llama.cpp.git

@@ -2,24 +2,29 @@ import requests
 from bs4 import BeautifulSoup
 import logging
 import argparse
-import datetime
+import datetime from datetime
 from pathlib import Path
 import subprocess
+import os
 
-from HunyuanVideo.hyvideo.utils.file_utils import save_videos_grid
-from HunyuanVideo.hyvideo.config import parse_args
-from HunyuanVideo.hyvideo.inference import HunyuanVideoSampler
+from melo.api import TTS
+
+from hyvideo.utils.file_utils import save_videos_grid
+from hyvideo.config import parse_args
+from hyvideo.inference import HunyuanVideoSampler
 
 def generate_videos(prompts):
+    # this has to be done, some of the hunyuan scripts have hardcoded paths that expect the cwd to be hunyuan
+    os.chdir("HunyuanVideo")
+
     args = parse_args()
-    #logger.info(f'Making video with prompt: {prompt}')
-    args.prompt = "a cat dancing"
-    args.video_size[0] = 960
-    args.video_size[1] = 544
+    args.prompt = "Stocks just did something they haven't done in nearly three decades"
+    args.video_size = (960, 544)
     args.video_length = 129
     args.seed = 0
     args.infer_steps = 30
-    #args.use_cpu_offload
+    args.use_cpu_offload = True
+    args.save_path = "./results"
 
     models_root_path = Path(args.model_base)
     if not models_root_path.exists():
@@ -57,10 +62,12 @@ def generate_videos(prompts):
     if 'LOCAL_RANK' not in os.environ or int(os.environ['LOCAL_RANK']) == 0:
         for i, sample in enumerate(samples):
             sample = samples[i].unsqueeze(0)
-            time_flag = datetime.fromtimestamp(time.time()).strftime("%Y-%m-%d-%H:%M:%S")
+            time_flag = datetime.now().strftime("%Y_%m_%d")
             save_path = f"{save_path}/{time_flag}_seed{outputs['seeds'][i]}_{outputs['prompts'][i][:100].replace('/','')}.mp4"
             save_videos_grid(sample, save_path, fps=24)
             logger.info(f'Sample save to: {save_path}')
+
+    os.chdir("..")
 
 def process_videos_and_audio(audio_video_mapping, final_output_file):
     """
@@ -192,8 +199,6 @@ def llm_summarize_articles(articles):
             continue
 
 def tts(article_data):
-    from melo.api import TTS
-
     # TODO make this a for loop to generate speech for summarized version
     speed = 1.2
     device = 'auto' # Will automatically use GPU if available
@@ -288,7 +293,7 @@ if __name__ == "__main__":
 
     # Set up logging
     log_level = getattr(logging, args.log.upper(), logging.INFO)
-    year_month_date = datetime.datetime.now().strftime("%Y_%m_%d")
+    year_month_date = datetime.now().strftime("%Y_%m_%d")
     logging.basicConfig(
         level=log_level,
 		filename = 'rooporter_' + year_month_date + '.log',
