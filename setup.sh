@@ -19,7 +19,7 @@ if [ ! -d ".venv" ]; then
     pip install torch
     pip install torchvideo
     pip install flash-attn
-    python install -e .
+    pip install -e .
 else
     source .venv/bin/activate
 fi

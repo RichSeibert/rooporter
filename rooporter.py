@@ -2,7 +2,7 @@ import requests
 from bs4 import BeautifulSoup
 import logging
 import argparse
-import datetime from datetime
+from datetime import datetime
 from pathlib import Path
 import subprocess
 import os
@@ -13,6 +13,19 @@ from hyvideo.utils.file_utils import save_videos_grid
 from hyvideo.config import parse_args
 from hyvideo.inference import HunyuanVideoSampler
 
+
+class prompt_info:
+    article_summary = "article_summary"
+    video_prompt = "video_prompt"
+    def __init__(self, prompt_type, prompt_data):
+        self.prompts = prompt_data
+        if prompt_type == self.article_summary:
+            self.system_prompt = "Summarize the input article into 2 sentences. You cannot write anything except for the article summary. Do not write something like 'Here is a summary of the article:', you can only write the summary."
+            self.prompt_type = self.article_summary
+        elif prompt_type == video_prompt:
+            self.system_prompt = "Write a 1 sentence prompt for a text to video LLM that would generate a video for the following article. Do not write anything except for the prompt. Do not include the time duration of the video. Here is an example prompt: 'A stylish woman walks down a Tokyo street filled with warm glowing neon and animated city signage. She wears a black leather jacket, a long red dress, and black boots, and carries a black purse. She wears sunglasses and red lipstick. She walks confidently and casually. The street is damp and reflective, creating a mirror effect of the colorful lights. Many pedestrians walk about.'"
+            self.prompt_type = video_prompt
+
 def generate_videos(prompts):
     # this has to be done, some of the hunyuan scripts have hardcoded paths that expect the cwd to be hunyuan
     os.chdir("HunyuanVideo")
@@ -20,6 +33,7 @@ def generate_videos(prompts):
     args = parse_args()
     args.prompt = "Stocks just did something they haven't done in nearly three decades"
     args.video_size = (960, 544)
+    # determine video length from length of voiceover. Framerate is 24
     args.video_length = 129
     args.seed = 0
     args.infer_steps = 30
@@ -70,6 +84,7 @@ def generate_videos(prompts):
     os.chdir("..")
 
 def process_videos_and_audio(audio_video_mapping, final_output_file):
+    # TODO this needs to be fixed up and tested
     """
     Combines video files associated with audio files, adds the audio, 
     and combines all the resulting videos into one.
@@ -162,41 +177,56 @@ def process_videos_and_audio(audio_video_mapping, final_output_file):
         print(f"Error during ffmpeg execution: {e}")
         return False
 
-def llm_summarize_articles(articles):
+def generate_text(prompt_info):
     repo_path = Path(__file__).parent.as_posix()
     llamaCpp_file_path = repo_path + "/llama.cpp/build/bin/llama-cli"
     model_file_path = repo_path + "/models/Llama-3.1-8B-Lexi-Uncensored-V2-Q6_K_L.gguf"
     cpu_threads = "8"
     output_len = "64"
+    # TODO change this to match machine
     gpu_layers = "12"
     output_len = "150"
     context_len = "10000"
 
-    for article in articles:
-        prompt = "Below is an instruction that describes a task, paired with an input that provides further context. Write a response that appropriately completes the request."
-        prompt += "\n\n### Instruction:\n" + "Please summarize the following article into two sentences. You CANNOT write anything else except the article summary." + "\n\n### Input: " + article['text'] + "\n\n### Response:\n"
+    outputs = []
+
+    full_prompt = """<|begin_of_text|><|start_header_id|>system<|end_header_id|>
+
+    Cutting Knowledge Date: December 2023
+    Today Date: 26 Jul 2024
+
+    {system_prompt}<|eot_id|><|start_header_id|>user<|end_header_id|>
+
+    {prompt}<|eot_id|><|start_header_id|>assistant<|end_header_id|>"""
+
+    for prompt in prompt_info.prompts:
+        complete_prompt = full_prompt.replace("{system_prompt}", prompt_info.system_prompt)
+        complete_prompt = complete_prompt.replace("{prompt}", prompt)
         try:
             result = subprocess.run(
                 [llamaCpp_file_path,
                  "-m", model_file_path,
                  "-t", cpu_threads,
-                 "-n", output_len,
+                 #"-n", output_len,
                  "-ngl", gpu_layers,
                  "--temp", "0.9",
                  "-c", context_len,
-                 "-p", prompt],
+                 "-p", complete_prompt],
                 capture_output=True,
                 text=True
             )
             llm_output = result.stdout.strip()
-            start_string = "Response:\n"
+            start_string = "assistant\n\n"
             start_idx = llm_output.find(start_string) + len(start_string)
             extra_ending = " [end of text]"
             llm_output_stripped = llm_output[start_idx:-len(extra_ending)]
-            article["summarized"] = llm_output_stripped
+            outputs.append(llm_output_stripped)
         except Exception as e:
-            logging.error(f"Error running subprocess: {e}")
+            logging.error(f"Error running llama.cpp: {e}")
+            outputs.append("")
             continue
+    print("outputs =", outputs)
+    return outputs
 
 def tts(article_data):
     # TODO make this a for loop to generate speech for summarized version
@@ -288,8 +318,6 @@ if __name__ == "__main__":
     parser.add_argument('--limit', type=int, default=5, help="Number of articles to scrape")
     parser.add_argument('--log', type=str, default='info', help="Log level (debug, info, warning, error, critical)")
     args = parser.parse_args()
-    generate_videos([])
-    exit()
 
     # Set up logging
     log_level = getattr(logging, args.log.upper(), logging.INFO)
@@ -304,7 +332,22 @@ if __name__ == "__main__":
     base_url = "https://www.cnn.com"
     articles = scrape_homepage(base_url, limit=args.limit)
 
-    llm_summarize_articles(articles)
+    # TODO this is shit
+    # generate summarized version of each article
+    article_texts = [a["text"] for a in articles]
+    article_summary_prompt_info = prompt_info(
+                                    prompt_info.article_summary, 
+                                    article_texts)
+    for i, summary in enumerate(generate_text(article_summary_prompt_info)):
+        articles[i]["summary"] = summary
 
-    # TODO run TTS on summarized article text
-    #tts(article_data)
+    # TODO turn article summaries into audio
+    tts(articles)
+
+    # TODO generate prompt for text to video LLM using summarized articles
+    summarized_articles = [a[prompt_info.article_summary] for a in article_summary_prompt_info] 
+    video_prompt_prompt_info = prompt_info(
+                                prompt_info.video_prompt,
+                                summarized_articles)
+    articles["video_prompt"] = generate_text(video_prompt_prompt_info)
+
