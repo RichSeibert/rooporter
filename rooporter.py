@@ -6,6 +6,9 @@ from datetime import datetime
 from pathlib import Path
 import subprocess
 import os
+import time
+from multiprocessing import set_start_method, Pool
+import wave
 
 from melo.api import TTS
 
@@ -13,29 +16,30 @@ from hyvideo.utils.file_utils import save_videos_grid
 from hyvideo.config import parse_args
 from hyvideo.inference import HunyuanVideoSampler
 
-
 class prompt_info:
     article_summary = "article_summary"
     video_prompt = "video_prompt"
     def __init__(self, prompt_type, prompt_data):
         self.prompts = prompt_data
         if prompt_type == self.article_summary:
-            self.system_prompt = "Summarize the input article into 2 sentences. You cannot write anything except for the article summary. Do not write something like 'Here is a summary of the article:', you can only write the summary."
+            self.system_prompt = "Summarize the input article into 1 sentence. You cannot write anything except for the article summary. Do not write something like 'Here is a summary of the article:', you can only write the summary."
             self.prompt_type = self.article_summary
-        elif prompt_type == video_prompt:
-            self.system_prompt = "Write a 1 sentence prompt for a text to video LLM that would generate a video for the following article. Do not write anything except for the prompt. Do not include the time duration of the video. Here is an example prompt: 'A stylish woman walks down a Tokyo street filled with warm glowing neon and animated city signage. She wears a black leather jacket, a long red dress, and black boots, and carries a black purse. She wears sunglasses and red lipstick. She walks confidently and casually. The street is damp and reflective, creating a mirror effect of the colorful lights. Many pedestrians walk about.'"
-            self.prompt_type = video_prompt
+        elif prompt_type == self.video_prompt:
+            self.system_prompt = "Write a short, simple, descriptive, and funny 2 sentence scene of following article. Only describe the visuals of the scene. Do not write anything except for the prompt. Do not include the time duration of the video. Here is an example prompt: 'A stylish woman walks down a Tokyo street filled with warm glowing neon and animated city signage. She wears a black leather jacket, a long red dress, and black boots, and carries a black purse. She wears sunglasses and red lipstick. She walks confidently and casually. The street is damp and reflective, creating a mirror effect of the colorful lights. Many pedestrians walk about.'"
+            self.prompt_type = self.video_prompt
 
-def generate_videos(prompts):
-    # this has to be done, some of the hunyuan scripts have hardcoded paths that expect the cwd to be hunyuan
+def generate_videos(id_, prompt_info):
+    # have to change dir, some of the hunyuan scripts have hardcoded paths that expect the cwd to be HunyuanVideo
     os.chdir("HunyuanVideo")
 
-    args = parse_args()
-    args.prompt = "Stocks just did something they haven't done in nearly three decades"
+    prompt = prompt_info.prompt
+    class args:
+        a = 1
     args.video_size = (960, 544)
     # determine video length from length of voiceover. Framerate is 24
-    args.video_length = 129
-    args.seed = 0
+    args.fps = 24
+    args.video_length = prompt_info.duration * fps
+    args.seed = 777
     args.infer_steps = 30
     args.use_cpu_offload = True
     args.save_path = "./results"
@@ -77,9 +81,9 @@ def generate_videos(prompts):
         for i, sample in enumerate(samples):
             sample = samples[i].unsqueeze(0)
             time_flag = datetime.now().strftime("%Y_%m_%d")
-            save_path = f"{save_path}/{time_flag}_seed{outputs['seeds'][i]}_{outputs['prompts'][i][:100].replace('/','')}.mp4"
-            save_videos_grid(sample, save_path, fps=24)
-            logger.info(f'Sample save to: {save_path}')
+            save_path = f"{save_path}/{id_}.mp4"
+            save_videos_grid(sample, save_path, fps=fps)
+            logging.info(f'Sample save to: {save_path}')
 
     os.chdir("..")
 
@@ -183,7 +187,7 @@ def generate_text(prompt_info):
     model_file_path = repo_path + "/models/Llama-3.1-8B-Lexi-Uncensored-V2-Q6_K_L.gguf"
     cpu_threads = "8"
     output_len = "64"
-    # TODO change this to match machine
+    # TODO add to a config file
     gpu_layers = "12"
     output_len = "150"
     context_len = "10000"
@@ -199,6 +203,7 @@ def generate_text(prompt_info):
 
     {prompt}<|eot_id|><|start_header_id|>assistant<|end_header_id|>"""
 
+    # TODO use 'popen' instead of 'run' for parallization
     for prompt in prompt_info.prompts:
         complete_prompt = full_prompt.replace("{system_prompt}", prompt_info.system_prompt)
         complete_prompt = complete_prompt.replace("{prompt}", prompt)
@@ -225,18 +230,25 @@ def generate_text(prompt_info):
             logging.error(f"Error running llama.cpp: {e}")
             outputs.append("")
             continue
-    print("outputs =", outputs)
     return outputs
 
-def tts(article_data):
-    # TODO make this a for loop to generate speech for summarized version
-    speed = 1.2
-    device = 'auto' # Will automatically use GPU if available
-    model = TTS(language='EN', device=device)
-    speaker_ids = model.hps.data.spk2id
-    output_path = 'en-us.wav'
-    # TODO replace first arg
-    model.tts_to_file(article_data['headline'], speaker_ids['EN-US'], output_path, speed=speed)
+def tts(data):
+        file_name, text = data
+        speed = 1.25
+        # WARN - meloTTS doesn't clean up gpu memmory. Using multiprocess fixes
+        # this and adds the benefit of parallization
+        device = 'auto' # Will automatically use GPU if available
+        model = TTS(language='EN', device=device)
+        speaker_ids = model.hps.data.spk2id
+        output_path = f"tmp/audio/{file_name}.wav"
+        model.tts_to_file(text, speaker_ids['EN-US'], output_path, speed=speed)
+
+def generate_audio(input_data):
+    set_start_method("spawn", force=True)
+    # TODO add to a config file
+    with Pool(processes=2) as pool:
+        pool.map(tts, input_data)
+
 
 def parse_article(article_url):
     # Fetch the article
@@ -290,8 +302,9 @@ def scrape_homepage(base_url, limit=5):
     soup = BeautifulSoup(response.content, 'html.parser')
     articles = []
     
-    seen_hrefs = set()
     # Find article links matching the pattern
+    article_id = 0
+    seen_hrefs = set()
     for link in soup.find_all('a', "container__link container__link--type-article container_lead-package__link container_lead-package__left container_lead-package__light", href=True):
         # TODO add more classes. This class is only for the stories with a picture (?)
         href = link['href']
@@ -305,6 +318,8 @@ def scrape_homepage(base_url, limit=5):
             article_data = parse_article(article_url)
             if article_data:
                 articles.append(article_data)
+                articles[-1]["id"] = article_id 
+                article_id += 1
             if len(articles) >= limit:
                 break
         except Exception as e:
@@ -312,8 +327,18 @@ def scrape_homepage(base_url, limit=5):
                 
     return articles
 
+def get_wav_duration(directory):
+    files = os.listdir(directory)
+    durations = {}
+    for file in files:
+        with wave.open(directory+'/'+file, 'r') as wav_file:
+            frames = wav_file.getnframes()
+            rate = wav_file.getframerate()
+            id_ = file.split('.', 1)[0]
+            durations[id_] = (frames / float(rate))
+    return durations
+
 if __name__ == "__main__":
-    # Set up argument parser
     parser = argparse.ArgumentParser(description="Scrape news stories from CNN")
     parser.add_argument('--limit', type=int, default=5, help="Number of articles to scrape")
     parser.add_argument('--log', type=str, default='info', help="Log level (debug, info, warning, error, critical)")
@@ -341,13 +366,30 @@ if __name__ == "__main__":
     for i, summary in enumerate(generate_text(article_summary_prompt_info)):
         articles[i]["summary"] = summary
 
-    # TODO turn article summaries into audio
-    tts(articles)
+    # turn article summaries into audio
+    generate_audio([(article["id"], article["summary"]) for article in articles])
 
-    # TODO generate prompt for text to video LLM using summarized articles
-    summarized_articles = [a[prompt_info.article_summary] for a in article_summary_prompt_info] 
+    # generate video generation prompt for each article
+    summarized_articles = [a["summary"] for a in articles] 
     video_prompt_prompt_info = prompt_info(
                                 prompt_info.video_prompt,
                                 summarized_articles)
-    articles["video_prompt"] = generate_text(video_prompt_prompt_info)
+    for i, video_prompt in enumerate(generate_text(video_prompt_prompt_info)):
+        articles[i]["video_prompt"] = video_prompt
+    logging.debug(f"Article data: {articles}")
+
+    # TODO generate videos
+    audio_dir = "tmp/audio"
+    durations = get_wav_duration(audio_dir)
+    video_prompts_info = {}
+    for a in articles:
+        id_ = a["id"]
+        video_prompts_info[id_] = {"prompt": a["video_prompt"],
+                              "duration": durations[id_]}
+    for id_, prompt_info in video_prompts_info.items():
+        generate_videos(id_, prompt_info)
+
+    # TODO combine videos and audio
+
+    # TODO upload
 

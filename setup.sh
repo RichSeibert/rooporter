@@ -2,11 +2,11 @@
 
 # TODO figure out how to save this off into workspace dir so it's not deleted
 if grep -q "Red Hat" /etc/redhat-release; then
-    sudo dnf install ffmpeg vim tmux git cmake g++ htop -y
+    sudo dnf install ffmpeg vim tmux git cmake g++ htop rsync -y
 else
     apt update
     apt upgrade -y
-    apt install ffmpeg vim tmux git cmake g++ htop -y
+    apt install ffmpeg vim tmux git cmake g++ htop rsync -y
 fi
 
 if [ ! -d ".venv" ]; then
