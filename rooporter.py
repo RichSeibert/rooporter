@@ -9,11 +9,13 @@ import os
 import time
 from multiprocessing import set_start_method, Pool
 import wave
+import math
+import random
 
 from melo.api import TTS
 
 from hyvideo.utils.file_utils import save_videos_grid
-from hyvideo.config import parse_args
+from hyvideo.config import parse_args as hy_parse_args
 from hyvideo.inference import HunyuanVideoSampler
 
 class prompt_info:
@@ -28,30 +30,24 @@ class prompt_info:
             self.system_prompt = "Write a short, simple, descriptive, and funny 2 sentence scene of following article. Only describe the visuals of the scene. Do not write anything except for the prompt. Do not include the time duration of the video. Here is an example prompt: 'A stylish woman walks down a Tokyo street filled with warm glowing neon and animated city signage. She wears a black leather jacket, a long red dress, and black boots, and carries a black purse. She wears sunglasses and red lipstick. She walks confidently and casually. The street is damp and reflective, creating a mirror effect of the colorful lights. Many pedestrians walk about.'"
             self.prompt_type = self.video_prompt
 
-def generate_videos(id_, prompt_info):
+def generate_videos(save_file_name, prompt_info):
+    logging.info("Generating videos")
     # have to change dir, some of the hunyuan scripts have hardcoded paths that expect the cwd to be HunyuanVideo
     os.chdir("HunyuanVideo")
 
-    prompt = prompt_info.prompt
-    class args:
-        a = 1
+    args = hy_parse_args() 
+    args.prompt = prompt_info["prompt"]
     args.video_size = (960, 544)
     # determine video length from length of voiceover. Framerate is 24
     args.fps = 24
-    args.video_length = prompt_info.duration * fps
-    args.seed = 777
+    args.video_length = prompt_info["duration"] * args.fps
+    args.seed = random.randint(1,999999)
     args.infer_steps = 30
     args.use_cpu_offload = True
-    args.save_path = "./results"
 
-    models_root_path = Path(args.model_base)
+    models_root_path = Path("./ckpts")
     if not models_root_path.exists():
         raise ValueError(f"`models_root` not exists: {models_root_path}")
-    
-    # Create save folder to save the samples
-    save_path = args.save_path if args.save_path_suffix=="" else f'{args.save_path}_{args.save_path_suffix}'
-    if not os.path.exists(args.save_path):
-        os.makedirs(save_path, exist_ok=True)
 
     # Load models
     hunyuan_video_sampler = HunyuanVideoSampler.from_pretrained(models_root_path, args=args)
@@ -80,15 +76,14 @@ def generate_videos(id_, prompt_info):
     if 'LOCAL_RANK' not in os.environ or int(os.environ['LOCAL_RANK']) == 0:
         for i, sample in enumerate(samples):
             sample = samples[i].unsqueeze(0)
-            time_flag = datetime.now().strftime("%Y_%m_%d")
-            save_path = f"{save_path}/{id_}.mp4"
+            save_path = f"../tmp/video/{save_file_name}.mp4"
             save_videos_grid(sample, save_path, fps=fps)
             logging.info(f'Sample save to: {save_path}')
 
     os.chdir("..")
 
 def process_videos_and_audio(audio_video_mapping, final_output_file):
-    # TODO this needs to be fixed up and tested
+    logging.info("Processing videos and audio")
     """
     Combines video files associated with audio files, adds the audio, 
     and combines all the resulting videos into one.
@@ -101,87 +96,81 @@ def process_videos_and_audio(audio_video_mapping, final_output_file):
     Returns:
         bool: True if the operation was successful, False otherwise.
     """
-    try:
-        intermediate_videos = []
+    intermediate_videos = []
 
-        # Process each audio and associated video files
-        for audio_file, video_files in audio_video_mapping.items():
-            audio_file = Path(audio_file)
-            video_files = [Path(video) for video in video_files]
-            
-            # Check if all files exist
-            for file in [audio_file] + video_files:
-                if not file.exists():
-                    print(f"Error: File not found: {file}")
-                    return False
-            
-            # Create a temporary file list for video concatenation
-            temp_list_file = Path("video_list.txt")
-            with temp_list_file.open("w") as f:
-                for video in video_files:
-                    f.write(f"file '{video.resolve()}'\n")
-
-            # Combine videos associated with the audio file
-            combined_video = Path(f"combined_{audio_file.stem}.mp4")
-            combine_command = [
-                "ffmpeg",
-                "-f", "concat",
-                "-safe", "0",
-                "-i", str(temp_list_file),
-                "-c", "copy",
-                str(combined_video)
-            ]
-            subprocess.run(combine_command, check=True)
-
-            # Add the audio to the combined video
-            audio_video_output = Path(f"output_{audio_file.stem}.mp4")
-            final_command = [
-                "ffmpeg",
-                "-i", str(combined_video),
-                "-i", str(audio_file),
-                "-c:v", "copy",
-                "-c:a", "aac",
-                "-strict", "experimental",
-                str(audio_video_output)
-            ]
-            subprocess.run(final_command, check=True)
-
-            # Clean up intermediate video and add to the list for final combination
-            combined_video.unlink()  # Remove intermediate combined video
-            intermediate_videos.append(audio_video_output)
-
-            # Clean up temporary list file
-            temp_list_file.unlink()
-
-        # Combine all processed videos into one final output
-        final_list_file = Path("final_video_list.txt")
-        with final_list_file.open("w") as f:
-            for video in intermediate_videos:
+    # Process each audio and associated video files
+    for audio_file, video_files in audio_video_mapping.items():
+        audio_file = Path(audio_file)
+        video_files = [Path(video) for video in video_files]
+        
+        # Check if all files exist
+        for file in [audio_file] + video_files:
+            if not file.exists():
+                logging.error(f"Error: File not found: {file}")
+                return False
+        
+        # Create a temporary file list for video concatenation
+        temp_list_file = Path("video_list.txt")
+        with temp_list_file.open("w") as f:
+            for video in video_files:
                 f.write(f"file '{video.resolve()}'\n")
 
-        combine_all_command = [
+        # Combine videos associated with the audio file
+        combined_video = Path(f"combined_{audio_file.stem}.mp4")
+        combine_command = [
             "ffmpeg",
             "-f", "concat",
             "-safe", "0",
-            "-i", str(final_list_file),
+            "-i", str(temp_list_file),
             "-c", "copy",
-            str(final_output_file)
+            str(combined_video)
         ]
-        subprocess.run(combine_all_command, check=True)
+        subprocess.run(combine_command, check=True)
 
-        # Clean up intermediate videos and the final list file
+        # Add the audio to the combined video
+        audio_video_output = Path(f"output_{audio_file.stem}.mp4")
+        final_command = [
+            "ffmpeg",
+            "-i", str(combined_video),
+            "-i", str(audio_file),
+            "-c:v", "copy",
+            "-c:a", "aac",
+            "-strict", "experimental",
+            str(audio_video_output)
+        ]
+        subprocess.run(final_command, check=True)
+
+        # Clean up intermediate video and add to the list for final combination
+        combined_video.unlink()  # Remove intermediate combined video
+        intermediate_videos.append(audio_video_output)
+
+        # Clean up temporary list file
+        temp_list_file.unlink()
+
+    # Combine all processed videos into one final output
+    final_list_file = Path("final_video_list.txt")
+    with final_list_file.open("w") as f:
         for video in intermediate_videos:
-            video.unlink()
-        final_list_file.unlink()
+            f.write(f"file '{video.resolve()}'\n")
 
-        print(f"Final combined video saved to {final_output_file}")
-        return True
+    combine_all_command = [
+        "ffmpeg",
+        "-f", "concat",
+        "-safe", "0",
+        "-i", str(final_list_file),
+        "-c", "copy",
+        str(final_output_file)
+    ]
+    subprocess.run(combine_all_command, check=True)
 
-    except subprocess.CalledProcessError as e:
-        print(f"Error during ffmpeg execution: {e}")
-        return False
+    # Clean up intermediate videos and the final list file
+    for video in intermediate_videos:
+        video.unlink()
+    final_list_file.unlink()
+
 
 def generate_text(prompt_info):
+    logging.info(f"Generating text: {prompt_info.prompt_type}")
     repo_path = Path(__file__).parent.as_posix()
     llamaCpp_file_path = repo_path + "/llama.cpp/build/bin/llama-cli"
     model_file_path = repo_path + "/models/Llama-3.1-8B-Lexi-Uncensored-V2-Q6_K_L.gguf"
@@ -244,6 +233,7 @@ def tts(data):
         model.tts_to_file(text, speaker_ids['EN-US'], output_path, speed=speed)
 
 def generate_audio(input_data):
+    logging.info("Generating audio")
     set_start_method("spawn", force=True)
     # TODO add to a config file
     with Pool(processes=2) as pool:
@@ -251,6 +241,7 @@ def generate_audio(input_data):
 
 
 def parse_article(article_url):
+    logging.info("Parsing article")
     # Fetch the article
     article_response = requests.get(article_url)
     if article_response.status_code != 200:
@@ -282,6 +273,7 @@ def parse_article(article_url):
     return article
 
 def scrape_homepage(base_url, limit=5):
+    logging.info("Scrape website")
     """
     Scrape headlines and articles from CNN.
     
@@ -329,14 +321,14 @@ def scrape_homepage(base_url, limit=5):
 
 def get_wav_duration(directory):
     files = os.listdir(directory)
-    durations = {}
+    audio_file_durations = {}
     for file in files:
         with wave.open(directory+'/'+file, 'r') as wav_file:
             frames = wav_file.getnframes()
             rate = wav_file.getframerate()
             id_ = file.split('.', 1)[0]
-            durations[id_] = (frames / float(rate))
-    return durations
+            audio_file_durations[id_] = math.ceil(frames / float(rate))
+    return audio_file_durations
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Scrape news stories from CNN")
@@ -378,18 +370,23 @@ if __name__ == "__main__":
         articles[i]["video_prompt"] = video_prompt
     logging.debug(f"Article data: {articles}")
 
-    # TODO generate videos
+    # Generate videos. Will generate multiple <video_duration> second videos for each audio clip to cover the entire clip and more. Output file format is <audio_file_id>_<video_file_id>.mp4
     audio_dir = "tmp/audio"
-    durations = get_wav_duration(audio_dir)
+    audio_file_durations = get_wav_duration(audio_dir)
     video_prompts_info = {}
+    video_duration = 4
     for a in articles:
         id_ = a["id"]
         video_prompts_info[id_] = {"prompt": a["video_prompt"],
-                              "duration": durations[id_]}
+                                   "duration": video_duration}
     for id_, prompt_info in video_prompts_info.items():
-        generate_videos(id_, prompt_info)
+        num_videos = math.ceil(audio_file_durations[id_]/video_duration)
+        for sub_id in range(num_videos):
+            video_file_name = str(id_)+"_"+str(sub_id) 
+            generate_videos(video_file_name, prompt_info)
 
     # TODO combine videos and audio
+    process_videos_and_audio(audio_video_mapping, final_output_file)
 
     # TODO upload
 
