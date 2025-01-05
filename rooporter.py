@@ -31,6 +31,7 @@ class prompt_info:
             self.prompt_type = self.video_prompt
 
 def generate_videos(save_file_name, prompt_info):
+    # TODO maybe just run the "sample_video.py" using subprocess. The repo is messed up and needs to have the whole setup.py thing, which is a pain
     logging.info("Generating videos")
     # have to change dir, some of the hunyuan scripts have hardcoded paths that expect the cwd to be HunyuanVideo
     os.chdir("HunyuanVideo")
@@ -47,42 +48,47 @@ def generate_videos(save_file_name, prompt_info):
 
     models_root_path = Path("./ckpts")
     if not models_root_path.exists():
-        raise ValueError(f"`models_root` not exists: {models_root_path}")
+        logging.error(f"Model directory `./ckpts` not found")
+        return 1
 
-    # Load models
-    hunyuan_video_sampler = HunyuanVideoSampler.from_pretrained(models_root_path, args=args)
-    
-    # Get the updated args
-    args = hunyuan_video_sampler.args
+    try:
+        # Load models
+        hunyuan_video_sampler = HunyuanVideoSampler.from_pretrained(models_root_path, args=args)
+        
+        # Get the updated args
+        args = hunyuan_video_sampler.args
 
-    # Start sampling
-    outputs = hunyuan_video_sampler.predict(
-        prompt=args.prompt, 
-        height=args.video_size[0],
-        width=args.video_size[1],
-        video_length=args.video_length,
-        seed=args.seed,
-        negative_prompt=args.neg_prompt,
-        infer_steps=args.infer_steps,
-        guidance_scale=args.cfg_scale,
-        num_videos_per_prompt=args.num_videos,
-        flow_shift=args.flow_shift,
-        batch_size=args.batch_size,
-        embedded_guidance_scale=args.embedded_cfg_scale
-    )
-    samples = outputs['samples']
-    
-    # Save samples
-    if 'LOCAL_RANK' not in os.environ or int(os.environ['LOCAL_RANK']) == 0:
-        for i, sample in enumerate(samples):
-            sample = samples[i].unsqueeze(0)
-            save_path = f"../tmp/video/{save_file_name}.mp4"
-            save_videos_grid(sample, save_path, fps=fps)
-            logging.info(f'Sample save to: {save_path}')
+        # Start sampling
+        outputs = hunyuan_video_sampler.predict(
+            prompt=args.prompt, 
+            height=args.video_size[0],
+            width=args.video_size[1],
+            video_length=args.video_length,
+            seed=args.seed,
+            negative_prompt=args.neg_prompt,
+            infer_steps=args.infer_steps,
+            guidance_scale=args.cfg_scale,
+            num_videos_per_prompt=args.num_videos,
+            flow_shift=args.flow_shift,
+            batch_size=args.batch_size,
+            embedded_guidance_scale=args.embedded_cfg_scale
+        )
+        samples = outputs['samples']
+        
+        # Save samples
+        if 'LOCAL_RANK' not in os.environ or int(os.environ['LOCAL_RANK']) == 0:
+            for i, sample in enumerate(samples):
+                sample = samples[i].unsqueeze(0)
+                save_path = f"../tmp/video/{save_file_name}.mp4"
+                save_videos_grid(sample, save_path, fps=fps)
+                logging.info(f'Sample save to: {save_path}')
 
-    os.chdir("..")
+        os.chdir("..")
+    except Exception as e:
+        logging.error(f"Failed to generate video: {e}")
+        return 1
 
-def process_videos_and_audio(audio_video_mapping, final_output_file):
+def process_videos_and_audio(audio_video_mapping, output_file_name):
     logging.info("Processing videos and audio")
     """
     Combines video files associated with audio files, adds the audio, 
@@ -91,7 +97,6 @@ def process_videos_and_audio(audio_video_mapping, final_output_file):
     Args:
         audio_video_mapping (dict): Mapping where keys are audio file paths 
                                     and values are lists of associated video file paths.
-        final_output_file (str): Path to the final combined video file.
 
     Returns:
         bool: True if the operation was successful, False otherwise.
@@ -99,9 +104,11 @@ def process_videos_and_audio(audio_video_mapping, final_output_file):
     intermediate_videos = []
 
     # Process each audio and associated video files
+    audio_path = "tmp/audio/"
+    video_path = "tmp/video/"
     for audio_file, video_files in audio_video_mapping.items():
-        audio_file = Path(audio_file)
-        video_files = [Path(video) for video in video_files]
+        audio_file = Path(audio_path+audio_file+".wav")
+        video_files = [Path(video_path+video+".mp4") for video in video_files]
         
         # Check if all files exist
         for file in [audio_file] + video_files:
@@ -159,7 +166,7 @@ def process_videos_and_audio(audio_video_mapping, final_output_file):
         "-safe", "0",
         "-i", str(final_list_file),
         "-c", "copy",
-        str(final_output_file)
+        f"tmp/{output_file_name}.mp4"
     ]
     subprocess.run(combine_all_command, check=True)
 
@@ -167,7 +174,6 @@ def process_videos_and_audio(audio_video_mapping, final_output_file):
     for video in intermediate_videos:
         video.unlink()
     final_list_file.unlink()
-
 
 def generate_text(prompt_info):
     logging.info(f"Generating text: {prompt_info.prompt_type}")
@@ -346,6 +352,7 @@ if __name__ == "__main__":
 		datefmt='%H:%M:%S'
     )
 
+    """
     base_url = "https://www.cnn.com"
     articles = scrape_homepage(base_url, limit=args.limit)
 
@@ -379,14 +386,32 @@ if __name__ == "__main__":
         id_ = a["id"]
         video_prompts_info[id_] = {"prompt": a["video_prompt"],
                                    "duration": video_duration}
+    audio_to_video_files = {}
     for id_, prompt_info in video_prompts_info.items():
-        num_videos = math.ceil(audio_file_durations[id_]/video_duration)
+        id_s = str(id_)
+        audio_to_video_files[id_s] = []
+        num_videos = math.ceil(audio_file_durations[id_s]/video_duration)
         for sub_id in range(num_videos):
-            video_file_name = str(id_)+"_"+str(sub_id) 
-            generate_videos(video_file_name, prompt_info)
+            # for the last video, make it so the combined durations of all 
+            # videos is audio_duraiton + 1
+            if sub_id == num_videos-1:
+                if audio_file_durations % video_duration == 0:
+                    prompt_info["duration"] += 1
+                else:
+                    prompt_info["duration"] = (audio_file_durations % video_duration) + 1
+            video_file_name = id_s + "_" + str(sub_id) 
+            rc = generate_videos(video_file_name, prompt_info)
+            if not rc:
+                audio_to_video_files[id_s].append(video_file_name)
 
-    # TODO combine videos and audio
-    process_videos_and_audio(audio_video_mapping, final_output_file)
+    """
+    # TODO remove this line, it's for testing
+    audio_to_video_files = {"0": ["0_0", "0_1", "0_2"],
+                            "1": ["1_0", "1_1"]}
+    # TODO add fade between each grouping of videos, and maybe include an intro video
+    time_stamp = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
+    output_file_name = f"finished_video_{time_stamp}"
+    process_videos_and_audio(audio_to_video_files, output_file_name)
 
     # TODO upload
 

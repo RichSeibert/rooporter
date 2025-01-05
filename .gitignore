@@ -3,6 +3,7 @@ MeloTTS
 HunyuanVideo
 llama.cpp
 models
+tmp
 
 # custom
 tokens.json
