@@ -4,6 +4,7 @@
 Setup python venv and install requirements. Activate venv with `source .venv/bin/activate`
 
 ## steps
+0. Script is kicked off by cron job which is on a runpod instance. The runpod instance is started before the cronjob starts via a script which will run on a local machine, or something like a cheap AWS instance.
 1. Fetch news articles
 2. Generate one sentence summary and multi-sentence summary
 3. Generate voice readover from multi-sentence summary

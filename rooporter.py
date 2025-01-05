@@ -352,7 +352,6 @@ if __name__ == "__main__":
 		datefmt='%H:%M:%S'
     )
 
-    """
     base_url = "https://www.cnn.com"
     articles = scrape_homepage(base_url, limit=args.limit)
 
@@ -404,11 +403,8 @@ if __name__ == "__main__":
             if not rc:
                 audio_to_video_files[id_s].append(video_file_name)
 
-    """
-    # TODO remove this line, it's for testing
-    audio_to_video_files = {"0": ["0_0", "0_1", "0_2"],
-                            "1": ["1_0", "1_1"]}
     # TODO add fade between each grouping of videos, and maybe include an intro video
+    # TODO add subtitles for narration
     time_stamp = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
     output_file_name = f"finished_video_{time_stamp}"
     process_videos_and_audio(audio_to_video_files, output_file_name)
