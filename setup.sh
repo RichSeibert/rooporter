@@ -19,6 +19,7 @@ if [ ! -d ".venv" ]; then
     pip install torch
     pip install torchvideo
     pip install flash-attn
+    # this runs the setup.py script
     pip install -e .
 else
     source .venv/bin/activate

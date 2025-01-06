@@ -2,6 +2,7 @@ import requests
 from bs4 import BeautifulSoup
 import logging
 import argparse
+import configparser
 from datetime import datetime
 from pathlib import Path
 import subprocess
@@ -18,7 +19,7 @@ from hyvideo.utils.file_utils import save_videos_grid
 from hyvideo.config import parse_args as hy_parse_args
 from hyvideo.inference import HunyuanVideoSampler
 
-class prompt_info:
+class PromptInfo:
     article_summary = "article_summary"
     video_prompt = "video_prompt"
     def __init__(self, prompt_type, prompt_data):
@@ -41,7 +42,7 @@ def generate_videos(save_file_name, prompt_info):
     args.video_size = (960, 544)
     # determine video length from length of voiceover. Framerate is 24
     args.fps = 24
-    args.video_length = prompt_info["duration"] * args.fps
+    args.video_length = (prompt_info["duration"] * args.fps) + 1
     args.seed = random.randint(1,999999)
     args.infer_steps = 30
     args.use_cpu_offload = True
@@ -80,12 +81,12 @@ def generate_videos(save_file_name, prompt_info):
             for i, sample in enumerate(samples):
                 sample = samples[i].unsqueeze(0)
                 save_path = f"../tmp/video/{save_file_name}.mp4"
-                save_videos_grid(sample, save_path, fps=fps)
+                save_videos_grid(sample, save_path, fps=args.fps)
                 logging.info(f'Sample save to: {save_path}')
-
         os.chdir("..")
     except Exception as e:
         logging.error(f"Failed to generate video: {e}")
+        os.chdir("..")
         return 1
 
 def process_videos_and_audio(audio_video_mapping, output_file_name):
@@ -175,16 +176,12 @@ def process_videos_and_audio(audio_video_mapping, output_file_name):
         video.unlink()
     final_list_file.unlink()
 
-def generate_text(prompt_info):
+def generate_text(prompt_info, settings):
     logging.info(f"Generating text: {prompt_info.prompt_type}")
-    repo_path = Path(__file__).parent.as_posix()
-    llamaCpp_file_path = repo_path + "/llama.cpp/build/bin/llama-cli"
-    model_file_path = repo_path + "/models/Llama-3.1-8B-Lexi-Uncensored-V2-Q6_K_L.gguf"
-    cpu_threads = "8"
-    output_len = "64"
-    # TODO add to a config file
-    gpu_layers = "12"
-    output_len = "150"
+    llamaCpp_file_path = "llama.cpp/build/bin/llama-cli"
+    model_file_path = "models/" + settings["model_file_name"]
+    cpu_threads = str(settings["cpu_threads"])
+    gpu_layers = str(settings["llama_cpp_gpu_layers"])
     context_len = "10000"
 
     outputs = []
@@ -207,7 +204,6 @@ def generate_text(prompt_info):
                 [llamaCpp_file_path,
                  "-m", model_file_path,
                  "-t", cpu_threads,
-                 #"-n", output_len,
                  "-ngl", gpu_layers,
                  "--temp", "0.9",
                  "-c", context_len,
@@ -215,6 +211,7 @@ def generate_text(prompt_info):
                 capture_output=True,
                 text=True
             )
+            logging.debug(f"llama output: {result}")
             llm_output = result.stdout.strip()
             start_string = "assistant\n\n"
             start_idx = llm_output.find(start_string) + len(start_string)
@@ -238,13 +235,11 @@ def tts(data):
         output_path = f"tmp/audio/{file_name}.wav"
         model.tts_to_file(text, speaker_ids['EN-US'], output_path, speed=speed)
 
-def generate_audio(input_data):
+def generate_audio(input_data, pool_size):
     logging.info("Generating audio")
     set_start_method("spawn", force=True)
-    # TODO add to a config file
-    with Pool(processes=2) as pool:
+    with Pool(processes=pool_size) as pool:
         pool.map(tts, input_data)
-
 
 def parse_article(article_url):
     logging.info("Parsing article")
@@ -304,7 +299,6 @@ def scrape_homepage(base_url, limit=5):
     article_id = 0
     seen_hrefs = set()
     for link in soup.find_all('a', "container__link container__link--type-article container_lead-package__link container_lead-package__left container_lead-package__light", href=True):
-        # TODO add more classes. This class is only for the stories with a picture (?)
         href = link['href']
         if href in seen_hrefs:
             continue
@@ -336,11 +330,30 @@ def get_wav_duration(directory):
             audio_file_durations[id_] = math.ceil(frames / float(rate))
     return audio_file_durations
 
-if __name__ == "__main__":
+def parse_config(config):
+    config_settings = {}
+    try:
+        config.read('config.ini')
+        config_settings['tts_worker_pool_size'] = config.getint('DEFAULT', 'tts_worker_pool_size')
+        config_settings['number_of_articles'] = config.getint('DEFAULT', 'number_of_articles')
+        config_settings['cpu_threads'] = config.getint('LLAMACPP', 'cpu_threads')
+        config_settings['llama_cpp_gpu_layers'] = config.getint('LLAMACPP', 'llama_cpp_gpu_layers')
+        config_settings['model_file_name'] = config.get('LLAMACPP', 'model_file_name')
+        return config_settings
+    except Exception as e:
+        logging.error(f"Config file issue: {e}")
+
+def main():
+    # TODO args cannot be used because they are picked up by the hunyuan video parser, and then an error will occur complaining about unrecognized args
     parser = argparse.ArgumentParser(description="Scrape news stories from CNN")
     parser.add_argument('--limit', type=int, default=5, help="Number of articles to scrape")
-    parser.add_argument('--log', type=str, default='info', help="Log level (debug, info, warning, error, critical)")
+    parser.add_argument('--log', type=str, default='debug', help="Log level (debug, info, warning, error, critical)")
     args = parser.parse_args()
+
+    config = configparser.ConfigParser()
+    config_settings = parse_config(config)
+    if not config_settings or not args:
+        return
 
     # Set up logging
     log_level = getattr(logging, args.log.upper(), logging.INFO)
@@ -353,26 +366,30 @@ if __name__ == "__main__":
     )
 
     base_url = "https://www.cnn.com"
-    articles = scrape_homepage(base_url, limit=args.limit)
+    articles = scrape_homepage(base_url, 
+                               config_settings["number_of_articles"])
 
     # TODO this is shit
     # generate summarized version of each article
     article_texts = [a["text"] for a in articles]
-    article_summary_prompt_info = prompt_info(
-                                    prompt_info.article_summary, 
-                                    article_texts)
-    for i, summary in enumerate(generate_text(article_summary_prompt_info)):
+    prompt_info = PromptInfo(PromptInfo.article_summary, 
+                             article_texts)
+    article_summary_prompt_info = prompt_info
+    for i, summary in enumerate(generate_text(article_summary_prompt_info,
+                                              config_settings)):
         articles[i]["summary"] = summary
 
     # turn article summaries into audio
-    generate_audio([(article["id"], article["summary"]) for article in articles])
+    generate_audio([(article["id"], article["summary"]) for article in articles],
+                   config_settings["tts_worker_pool_size"])
 
     # generate video generation prompt for each article
     summarized_articles = [a["summary"] for a in articles] 
-    video_prompt_prompt_info = prompt_info(
-                                prompt_info.video_prompt,
-                                summarized_articles)
-    for i, video_prompt in enumerate(generate_text(video_prompt_prompt_info)):
+    prompt_info = PromptInfo(PromptInfo.video_prompt, 
+                             summarized_articles)
+    video_prompt_prompt_info = prompt_info
+    for i, video_prompt in enumerate(generate_text(video_prompt_prompt_info,
+                                                   config_settings)):
         articles[i]["video_prompt"] = video_prompt
     logging.debug(f"Article data: {articles}")
 
@@ -394,10 +411,10 @@ if __name__ == "__main__":
             # for the last video, make it so the combined durations of all 
             # videos is audio_duraiton + 1
             if sub_id == num_videos-1:
-                if audio_file_durations % video_duration == 0:
+                if audio_file_durations[id_s] % video_duration == 0:
                     prompt_info["duration"] += 1
                 else:
-                    prompt_info["duration"] = (audio_file_durations % video_duration) + 1
+                    prompt_info["duration"] = (audio_file_durations[id_s] % video_duration) + 1
             video_file_name = id_s + "_" + str(sub_id) 
             rc = generate_videos(video_file_name, prompt_info)
             if not rc:
@@ -411,3 +428,7 @@ if __name__ == "__main__":
 
     # TODO upload
 
+    # TODO delete everything in tmp/audio and tmp/video directories
+
+if __name__ == "__main__":
+    main()

@@ -1,7 +1,7 @@
 # rooporter
 
 ## setup
-Setup python venv and install requirements. Activate venv with `source .venv/bin/activate`
+Run `bash setup.sh` and then activate venv with `source .venv/bin/activate`
 
 ## steps
 0. Script is kicked off by cron job which is on a runpod instance. The runpod instance is started before the cronjob starts via a script which will run on a local machine, or something like a cheap AWS instance.
