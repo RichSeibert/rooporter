@@ -8,11 +8,10 @@ def setup_dirs(dirs):
 audio_dir = "tmp/audio/"
 video_dir = "tmp/video/"
 setup_dirs([audio_dir, video_dir])
+
+# TODO this doesn't work, I still have to run manually
 import nltk
-from nltk.data import path
-nltk_data_dir = ".venv/nltk_data"
-path.append(nltk_data_dir)
-nltk.download('averaged_perceptron_tagger', download_dir=nltk_data_dir)
+nltk.download('averaged_perceptron_tagger_eng')
 
 
 setup(

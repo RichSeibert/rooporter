@@ -1,6 +1,7 @@
 #!/bin/bash
 
 # TODO figure out how to save this off into workspace dir so it's not deleted
+# TODO this check is broken, just check if this dir exists
 if grep -q "Red Hat" /etc/redhat-release; then
     sudo dnf install ffmpeg vim tmux git cmake g++ htop rsync -y
 else
@@ -23,8 +24,8 @@ if [ ! -d ".venv" ]; then
     pip install -e .
 else
     source .venv/bin/activate
+    pip install -e .
 fi
-
 
 if [ ! -d "llama.cpp" ]; then
     git clone https://github.com/ggerganov/llama.cpp.git
