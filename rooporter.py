@@ -1,5 +1,3 @@
-import requests
-from bs4 import BeautifulSoup
 import logging
 import argparse
 import configparser
@@ -13,11 +11,18 @@ import wave
 import math
 import random
 
+import requests
+from bs4 import BeautifulSoup
+
 from melo.api import TTS
 
 from hyvideo.utils.file_utils import save_videos_grid
 from hyvideo.config import parse_args as hy_parse_args
 from hyvideo.inference import HunyuanVideoSampler
+
+from googleapiclient.discovery import build
+from googleapiclient.http import MediaFileUpload
+from google_auth_oauthlib.flow import InstalledAppFlow
 
 class PromptInfo:
     article_summary = "article_summary"
@@ -33,6 +38,8 @@ class PromptInfo:
 
 def generate_videos(save_file_name, prompt_info):
     # TODO maybe just run the "sample_video.py" using subprocess. The repo is messed up and needs to have the whole setup.py thing, which is a pain
+    # TODO this is very slow. Each time the entire model needs to be loaded again. Change this so all the prompts are passed in and I loop the predict in here
+    # TODO saw one generated video fucked up, all noise
     logging.info("Generating videos")
     # have to change dir, some of the hunyuan scripts have hardcoded paths that expect the cwd to be HunyuanVideo
     os.chdir("HunyuanVideo")
@@ -91,17 +98,6 @@ def generate_videos(save_file_name, prompt_info):
 
 def process_videos_and_audio(audio_video_mapping, output_file_name):
     logging.info("Processing videos and audio")
-    """
-    Combines video files associated with audio files, adds the audio, 
-    and combines all the resulting videos into one.
-
-    Args:
-        audio_video_mapping (dict): Mapping where keys are audio file paths 
-                                    and values are lists of associated video file paths.
-
-    Returns:
-        bool: True if the operation was successful, False otherwise.
-    """
     intermediate_videos = []
 
     # Process each audio and associated video files
@@ -274,7 +270,6 @@ def parse_article(article_url):
     return article
 
 def scrape_homepage(base_url, limit=5):
-    logging.info("Scrape website")
     """
     Scrape headlines and articles from CNN.
     
@@ -285,7 +280,7 @@ def scrape_homepage(base_url, limit=5):
     Returns:
         list of dict: List containing headline, article text, and URL.
     """
-    logging.info("Starting scrape for CNN...")
+    logging.info(f"Scrape {base_url}")
     response = requests.get(base_url)
     
     if response.status_code != 200:
@@ -329,6 +324,83 @@ def get_wav_duration(directory):
             id_ = file.split('.', 1)[0]
             audio_file_durations[id_] = math.ceil(frames / float(rate))
     return audio_file_durations
+
+def upload_to_youtube(video_path, title, description="", tags=None, category_id="25"):
+    logging.info("Uploading to youtube")
+    """
+    Uploads an MP4 video to YouTube Shorts using the YouTube Data API v3.
+
+    Args:
+        video_path (str): Path to the MP4 video file.
+        title (str): Title of the video.
+        description (str): Description of the video.
+        tags (list): List of tags for the video.
+        category_id (str): Category ID of the video. 25 = news/politics
+
+    Returns:
+        dict: The YouTube API response.
+    """
+    # Authenticate using OAuth 2.0
+    SCOPES = ["https://www.googleapis.com/auth/youtube.upload"]
+    flow = InstalledAppFlow.from_client_secrets_file(
+        "youtube_client_secret.json",
+        SCOPES
+    )
+    credentials = flow.run_console()
+
+    # Build the YouTube API client
+    youtube = build("youtube", "v3", credentials=credentials)
+
+    # Prepare the video metadata
+    body = {
+        "snippet": {
+            "title": title,
+            "description": description,
+            "tags": tags if tags else [],
+            "categoryId": category_id,
+        },
+        "status": {
+            "privacyStatus": privacy_status,
+        },
+    }
+
+    # Upload the video
+    media = MediaFileUpload(video_path, chunksize=-1, resumable=True, mimetype="video/mp4")
+    request = youtube.videos().insert(part="snippet,status", body=body, media_body=media)
+
+    response = None
+    while response is None:
+        status, response = request.next_chunk()
+        if status:
+            logging.info(f"Uploaded {int(status.progress() * 100)}%...")
+
+    return response
+
+def delete_tmp_files(audio_dir="tmp/audio", video_dir="tmp/videos"):
+    audio_path = Path(audio_dir)
+    video_path = Path(video_dir)
+    if audio_path.exists() and audio_path.is_dir():
+        for file in audio_path.glob("*"):
+            if file.is_file():
+                file.unlink()
+    if video_path.exists() and video_path.is_dir():
+        for file in video_path.glob("*"):
+            if file.is_file():
+                file.unlink()
+
+def date_string_mdy():
+    now = datetime.now()
+    day_suffix = get_day_suffix(now.day)
+    formatted_date = now.strftime(f"%b {now.day}{day_suffix}, %Y")
+    return formatted_date
+
+def get_day_suffix(day):
+    """
+    Returns the appropriate suffix for a given day.
+    """
+    if 11 <= day <= 13:  # Special case for 11th, 12th, 13th
+        return "th"
+    return {1: "st", 2: "nd", 3: "rd"}.get(day % 10, "th")
 
 def parse_config(config):
     config_settings = {}
@@ -426,9 +498,13 @@ def main():
     output_file_name = f"finished_video_{time_stamp}"
     process_videos_and_audio(audio_to_video_files, output_file_name)
 
-    # TODO upload
+	# TODO this needs to be tested - try commenting out all code above and running this with finished_video_... video
+    title = f"NEWS {date_string_mdy()}"
+    upload_to_youtube("tmp/"+output_file_name, title)
+	# TODO use https://github.com/makiisthenes/TiktokAutoUploader to copy youtube video to tiktok
 
-    # TODO delete everything in tmp/audio and tmp/video directories
+	# TODO uncomment this when running for real
+    # delete_tmp_files()
 
 if __name__ == "__main__":
     main()

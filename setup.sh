@@ -15,7 +15,7 @@ if [ ! -d ".venv" ]; then
     source .venv/bin/activate
     pip install --upgrade pip wheel setuptools
     # TODO torch and flash-attn don't install right when using requirements.txt
-    #pip install -r requirements.txt
+    pip install -r requirements.txt
     pip install bs4
     pip install torch
     pip install torchvideo

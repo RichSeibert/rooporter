@@ -4,6 +4,7 @@ HunyuanVideo
 llama.cpp
 models
 tmp
+youtube_client_secret.json
 
 # custom
 tokens.json

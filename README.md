@@ -1,7 +1,9 @@
 # rooporter
 
 ## setup
-Run `bash setup.sh` and then activate venv with `source .venv/bin/activate`
+1. Transfer LLM model into models, update config.ini with model name, and transfer `youtube_client_secret.json`
+2. Run `bash setup.sh`
+3. Run `bash run.sh`
 
 ## steps
 0. Script is kicked off by cron job which is on a runpod instance. The runpod instance is started before the cronjob starts via a script which will run on a local machine, or something like a cheap AWS instance.
