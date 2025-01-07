@@ -432,7 +432,7 @@ def main():
     year_month_date = datetime.now().strftime("%Y_%m_%d")
     logging.basicConfig(
         level=log_level,
-		filename = 'rooporter_' + year_month_date + '.log',
+		filename = 'logs/rooporter_' + year_month_date + '.log',
         format='%(asctime)s - %(levelname)s - %(message)s',
 		datefmt='%H:%M:%S'
     )

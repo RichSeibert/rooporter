@@ -10,6 +10,10 @@ else
     apt install ffmpeg vim tmux git cmake g++ htop rsync -y
 fi
 
+if [ ! -d "logs" ]; then
+    mkdir logs
+fi
+
 if [ ! -d ".venv" ]; then
     python -m venv .venv
     source .venv/bin/activate
