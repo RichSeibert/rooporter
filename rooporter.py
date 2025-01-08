@@ -20,6 +20,7 @@ from hyvideo.utils.file_utils import save_videos_grid
 from hyvideo.config import parse_args as hy_parse_args
 from hyvideo.inference import HunyuanVideoSampler
 
+import pickle
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
 from google_auth_oauthlib.flow import InstalledAppFlow
@@ -37,6 +38,7 @@ class PromptInfo:
             self.prompt_type = self.video_prompt
 
 def generate_videos(save_file_name, prompt_info):
+    # TODO use fp8 model instead of full precision one, and change command
     # TODO maybe just run the "sample_video.py" using subprocess. The repo is messed up and needs to have the whole setup.py thing, which is a pain
     # TODO this is very slow. Each time the entire model needs to be loaded again. Change this so all the prompts are passed in and I loop the predict in here
     # TODO saw one generated video fucked up, all noise
@@ -51,8 +53,13 @@ def generate_videos(save_file_name, prompt_info):
     args.fps = 24
     args.video_length = (prompt_info["duration"] * args.fps) + 1
     args.seed = random.randint(1,999999)
-    args.infer_steps = 30
+    args.infer_steps = 50
     args.use_cpu_offload = True
+    args.embedded_cfg_scale = 6.0
+    args.flow_shift = 7.0
+    args.flow_reverse = True
+    args.dit_weight = "ckpts/mp_rank_00_model_states_fp8.pt"
+    args.use_fp8 = True
 
     models_root_path = Path("./ckpts")
     if not models_root_path.exists():
@@ -342,16 +349,25 @@ def upload_to_youtube(video_path, title, description="", tags=None, category_id=
     """
     # Authenticate using OAuth 2.0
     SCOPES = ["https://www.googleapis.com/auth/youtube.upload"]
-    flow = InstalledAppFlow.from_client_secrets_file(
-        "youtube_client_secret.json",
-        SCOPES
-    )
-    credentials = flow.run_console()
+    credentials = None
+    try:
+        with open("credentials.pkl", "rb") as token:
+            credentials = pickle.load(token)
+    except FileNotFoundError:
+        print("No saved credentials found. Authenticating through browser")
 
-    # Build the YouTube API client
+    if not credentials or not credentials.valid:
+        if credentials and credentials.expired and credentials.refresh_token:
+            credentials.refresh(Request())
+        else:
+            flow = InstalledAppFlow.from_client_secrets_file("youtube_client_secret.json", SCOPES)
+            credentials = flow.run_local_server(port=0)
+
+        with open("credentials.pkl", "wb") as token:
+            pickle.dump(credentials, token)
+            print("Credentials saved to credentials.pkl")
+
     youtube = build("youtube", "v3", credentials=credentials)
-
-    # Prepare the video metadata
     body = {
         "snippet": {
             "title": title,
@@ -360,11 +376,9 @@ def upload_to_youtube(video_path, title, description="", tags=None, category_id=
             "categoryId": category_id,
         },
         "status": {
-            "privacyStatus": privacy_status,
+            "privacyStatus": "public",
         },
     }
-
-    # Upload the video
     media = MediaFileUpload(video_path, chunksize=-1, resumable=True, mimetype="video/mp4")
     request = youtube.videos().insert(part="snippet,status", body=body, media_body=media)
 
@@ -373,7 +387,7 @@ def upload_to_youtube(video_path, title, description="", tags=None, category_id=
         status, response = request.next_chunk()
         if status:
             logging.info(f"Uploaded {int(status.progress() * 100)}%...")
-
+    logging.info("Upload finished")
     return response
 
 def delete_tmp_files(audio_dir="tmp/audio", video_dir="tmp/videos"):
@@ -498,7 +512,6 @@ def main():
     output_file_name = f"finished_video_{time_stamp}"
     process_videos_and_audio(audio_to_video_files, output_file_name)
 
-	# TODO this needs to be tested - try commenting out all code above and running this with finished_video_... video
     title = f"NEWS {date_string_mdy()}"
     upload_to_youtube("tmp/"+output_file_name, title)
 	# TODO use https://github.com/makiisthenes/TiktokAutoUploader to copy youtube video to tiktok

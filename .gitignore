@@ -5,6 +5,7 @@ llama.cpp
 models
 tmp
 youtube_client_secret.json
+credentials.pkl
 
 # custom
 tokens.json
