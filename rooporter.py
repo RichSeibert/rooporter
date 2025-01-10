@@ -14,19 +14,21 @@ import random
 import requests
 from bs4 import BeautifulSoup
 
-from melo.api import TTS
+import pickle
+from googleapiclient.discovery import build
+from googleapiclient.http import MediaFileUpload
+from google_auth_oauthlib.flow import InstalledAppFlow
 
 # TODO this is shit
 import sys
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), 'MeloTTS')))
+from melo.api import TTS
+
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), 'HunyuanVideo')))
 from hyvideo.utils.file_utils import save_videos_grid
 from hyvideo.config import parse_args as hy_parse_args
 from hyvideo.inference import HunyuanVideoSampler
 
-import pickle
-from googleapiclient.discovery import build
-from googleapiclient.http import MediaFileUpload
-from google_auth_oauthlib.flow import InstalledAppFlow
 
 class PromptInfo:
     article_summary = "article_summary"

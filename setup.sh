@@ -15,16 +15,11 @@ if [ ! -d "logs" ]; then
 fi
 
 if [ ! -d ".venv" ]; then
-    python -m venv .venv
+    python3.10 -m venv .venv
     source .venv/bin/activate
     pip install --upgrade pip wheel setuptools
     # TODO torch and flash-attn don't install right when using requirements.txt
     pip install -r requirements.txt
-    pip install bs4
-    pip install torch
-    pip install torchvideo
-    pip install flash-attn
-    pip install nltk
     # this runs the setup.py script
     pip install -e .
 else

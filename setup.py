@@ -13,6 +13,7 @@ setup_dirs([audio_dir, video_dir])
 import nltk
 nltk.download('averaged_perceptron_tagger_eng')
 
+"""
 setup(
     name="rooporter",
     version="0.1.0",
@@ -26,3 +27,4 @@ setup(
     install_requires=[],
     python_requires=">=3.10",
 )
+"""
