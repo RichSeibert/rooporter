@@ -16,6 +16,9 @@ from bs4 import BeautifulSoup
 
 from melo.api import TTS
 
+# TODO this is shit
+import sys
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), 'HunyuanVideo')))
 from hyvideo.utils.file_utils import save_videos_grid
 from hyvideo.config import parse_args as hy_parse_args
 from hyvideo.inference import HunyuanVideoSampler
