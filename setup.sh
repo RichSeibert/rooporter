@@ -24,6 +24,7 @@ if [ ! -d ".venv" ]; then
     pip install torch
     pip install torchvideo
     pip install flash-attn
+    pip install nltk
     # this runs the setup.py script
     pip install -e .
 else
