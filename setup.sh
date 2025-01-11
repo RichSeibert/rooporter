@@ -1,7 +1,5 @@
 #!/bin/bash
 
-echo "Running setup.sh"
-
 # TODO figure out how to save off installed packages from apt/dnf into workspace dir so it's not deleted
 if [ "$1" == "--dev" ]; then
     echo "Dev mode, installing extra packages for debug"

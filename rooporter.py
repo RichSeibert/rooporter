@@ -55,7 +55,7 @@ def generate_videos(save_file_name, prompt_info):
     args.fps = 24
     args.video_length = (prompt_info["duration"] * args.fps) + 1
     args.seed = random.randint(1,999999)
-    args.infer_steps = 50
+    args.infer_steps = 35
     args.use_cpu_offload = True
     args.embedded_cfg_scale = 6.0
     args.flow_shift = 7.0

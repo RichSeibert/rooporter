@@ -1,11 +1,9 @@
 #!/bin/bash
 
-# TODO this will not be constant, need to check what the pod id using "get"
-# TODO check if ntlk data needs to be downloaded every run (and if anything else needs to be setup as well after pod termination)
-
+echo "Run setup.sh"
 bash setup.sh
 
-echo "Starting rooporter.py"
+echo "Run rooporter.py"
 source .venv/bin/activate
 python rooporter.py
 

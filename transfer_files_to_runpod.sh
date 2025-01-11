@@ -1,3 +1,8 @@
-PORT="22070"
-IP="69.30.85.73"
-rsync -vz -e "ssh -p $PORT -i ~/.ssh/runpod_key" /home/rich/Documents/rooporter/youtube_client_secret.json /home/rich/Documents/rooporter/credentials.pkl /home/rich/Documents/runpod_api_key root@$IP:/workspace/rooporter/
+#!/bin/bash
+
+if [ $# -le 1 ]; then
+    echo "Usage: transfer_files_to_runpod.sh [port] [ip]"
+    exit 1
+fi
+
+rsync -vz -e "ssh -p $1 -i ~/.ssh/runpod_key" /home/rich/Documents/rooporter/youtube_client_secret.json /home/rich/Documents/rooporter/credentials.pkl /home/rich/Documents/runpod_api_key root@$2:/workspace/rooporter/
