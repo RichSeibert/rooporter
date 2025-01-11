@@ -8,7 +8,7 @@ else
     apt update
     apt upgrade -y
     apt install ffmpeg vim tmux git cmake g++ htop rsync -y
-    apt install python3.10-evenv
+    apt install python3.10-venv
 fi
 
 if [ ! -d "logs" ]; then
