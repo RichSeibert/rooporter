@@ -1,11 +1,13 @@
 #!/bin/bash
+
 # TODO this will not be constant, need to check what the pod id using "get"
-RUNPOD_POD_ID="igdzrkinh6bdzl"
+# TODO check if ntlk data needs to be downloaded every run (and if anything else needs to be setup as well after pod termination)
 
 source .venv/bin/activate
 python rooporter.py
 
-wall "shutdown"
+pod_id=$(runpodctl get pod | awk 'NR==2 {print $1}')
 api_key=$(<runpod_api_key)
 runpodctl config --apiKey $api_key
-runpodctl stop pod $RUNPOD_POD_ID
+wall "shutdown"
+runpodctl stop pod $pod_id

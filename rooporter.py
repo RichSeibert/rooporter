@@ -19,7 +19,7 @@ from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
 from google_auth_oauthlib.flow import InstalledAppFlow
 
-# TODO this is shit
+# TODO this is shit, shouldn't have to modify the path for melo and hunyuan, but setup.py doesn't work
 import sys
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), 'MeloTTS')))
 from melo.api import TTS
@@ -43,10 +43,7 @@ class PromptInfo:
             self.prompt_type = self.video_prompt
 
 def generate_videos(save_file_name, prompt_info):
-    # TODO use fp8 model instead of full precision one, and change command
-    # TODO maybe just run the "sample_video.py" using subprocess. The repo is messed up and needs to have the whole setup.py thing, which is a pain
     # TODO this is very slow. Each time the entire model needs to be loaded again. Change this so all the prompts are passed in and I loop the predict in here
-    # TODO saw one generated video fucked up, all noise
     logging.info("Generating videos")
     # have to change dir, some of the hunyuan scripts have hardcoded paths that expect the cwd to be HunyuanVideo
     os.chdir("HunyuanVideo")
