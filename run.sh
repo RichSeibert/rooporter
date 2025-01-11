@@ -1,4 +1,5 @@
 #!/bin/bash
+# TODO this will not be constant, need to check what the pod id using "get"
 RUNPOD_POD_ID="igdzrkinh6bdzl"
 
 source .venv/bin/activate

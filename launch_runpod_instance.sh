@@ -2,6 +2,7 @@
 # setup api key before running this with: runpodctl config --apiKey $RUNPOD_API_KEY
 RUNPOD_POD_ID="igdzrkinh6bdzl"
 
+# TODO this will have to change to create pod and remove pod. Stopping a pod means that later on it might be taken by someone else
 runpodctl start pod $RUNPOD_POD_ID
 POD_DETAILS=$(runpodctl get pod "$RUNPOD_POD_ID" --allfields)
 ip_and_port=$(echo "$POD_DETAILS" | grep -oP '\d{1,3}(\.\d{1,3}){3}:\d+->22\xa0\(pub,tcp\)' | head -n 1)
