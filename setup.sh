@@ -8,6 +8,7 @@ else
     apt update
     apt upgrade -y
     apt install ffmpeg vim tmux git cmake g++ htop rsync -y
+    apt install python3.10-evenv
 fi
 
 if [ ! -d "logs" ]; then
@@ -15,12 +16,14 @@ if [ ! -d "logs" ]; then
 fi
 
 if [ ! -d ".venv" ]; then
+    echo "Creating python virtual env"
     python3.10 -m venv .venv
     source .venv/bin/activate
     pip install --upgrade pip wheel setuptools
     # TODO torch and flash-attn don't install right when using requirements.txt
     pip install -r requirements.txt
-    # this runs the setup.py script
+    pip install torch
+    pip install flash-attn
     pip install -e .
 else
     source .venv/bin/activate
@@ -28,6 +31,7 @@ else
 fi
 
 if [ ! -d "llama.cpp" ]; then
+    echo "Creating llama.cpp"
     git clone https://github.com/ggerganov/llama.cpp.git
     cd llama.cpp
     # Comment out cuda flag if not using GPU
@@ -38,11 +42,13 @@ if [ ! -d "llama.cpp" ]; then
 fi
 
 if [ ! -d "models" ]; then
+    echo "Downloading models"
     mkdir models
     huggingface-cli download bartowski/Llama-3.1-8B-Lexi-Uncensored-V2-GGUF Llama-3.1-8B-Lexi-Uncensored-V2-Q8_0.gguf --local-dir ./models
 fi
 
 if [ ! -d "MeloTTS" ]; then
+    echo "Creating MeloTTS"
     git clone https://github.com/myshell-ai/MeloTTS.git
     cd MeloTTS
     pip install -e .
@@ -51,6 +57,7 @@ if [ ! -d "MeloTTS" ]; then
 fi
 
 if [ ! -d "HunyuanVideo" ]; then
+    echo "Creating HunyuanVideo"
     git clone https://github.com/Tencent/HunyuanVideo.git
     cd HunyuanVideo
     pip install -r requirements.txt
