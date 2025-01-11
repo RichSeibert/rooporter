@@ -1,14 +1,30 @@
 #!/bin/bash
 
-# TODO figure out how to save this off into workspace dir so it's not deleted
-# TODO this check is broken, just check if this dir exists
-if grep -q "Red Hat" /etc/redhat-release; then
-    sudo dnf install ffmpeg vim tmux git cmake g++ htop rsync -y
+echo "Running setup.sh"
+
+# TODO figure out how to save off installed packages from apt/dnf into workspace dir so it's not deleted
+if [ "$1" == "--dev" ]; then
+    echo "Dev mode, installing extra packages for debug"
+    # TODO this check is broken, just check if this dir exists
+    if [ grep -q "Red Hat" /etc/redhat-release]; then
+        sudo dnf install ffmpeg vim tmux git cmake g++ htop rsync -y
+    else
+        apt update
+        apt upgrade -y
+        apt install ffmpeg vim tmux git cmake g++ htop rsync -y
+        apt install --upgrade python3.10-venv -y
+    fi
 else
-    apt update
-    apt upgrade -y
-    apt install ffmpeg vim tmux git cmake g++ htop rsync -y
-    apt install --upgrade python3.10-venv
+    echo "Installing packages"
+    # TODO this check is broken, just check if this dir exists
+    if [ grep -q "Red Hat" /etc/redhat-release]; then
+        sudo dnf install ffmpeg git -y
+    else
+        apt update
+        apt upgrade -y
+        apt install ffmpeg git -y
+        apt install --upgrade python3.10-venv -y
+    fi
 fi
 
 if [ ! -d "logs" ]; then
@@ -27,6 +43,7 @@ if [ ! -d ".venv" ]; then
     pip install flash-attn
     python setup.py
 else
+    echo ".venv exists, only running setup.py"
     source .venv/bin/activate
     python setup.py
 fi

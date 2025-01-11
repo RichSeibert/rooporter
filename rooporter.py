@@ -435,7 +435,7 @@ def main():
     # TODO args cannot be used because they are picked up by the hunyuan video parser, and then an error will occur complaining about unrecognized args
     parser = argparse.ArgumentParser(description="Scrape news stories from CNN")
     parser.add_argument('--limit', type=int, default=5, help="Number of articles to scrape")
-    parser.add_argument('--log', type=str, default='debug', help="Log level (debug, info, warning, error, critical)")
+    parser.add_argument('--log', type=str, default='info', help="Log level (debug, info, warning, error, critical)")
     args = parser.parse_args()
 
     config = configparser.ConfigParser()
