@@ -4,6 +4,7 @@ HunyuanVideo
 llama.cpp
 models
 tmp
+runpod_api_key
 youtube_client_secret.json
 credentials.pkl
 

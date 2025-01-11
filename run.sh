@@ -1,8 +1,10 @@
 #!/bin/bash
+RUNPOD_POD_ID="igdzrkinh6bdzl"
 
 source .venv/bin/activate
 python rooporter.py
-if [ "$1" == "shutdown_after_run" ]; then
-    echo "shutdown"
-    shutdown
-fi
+
+wall "shutdown"
+api_key=$(<runpod_api_key)
+runpodctl config --apiKey $api_key
+runpodctl stop pod $RUNPOD_POD_ID
