@@ -452,6 +452,7 @@ def main():
         format='%(asctime)s - %(levelname)s - %(message)s',
 		datefmt='%H:%M:%S'
     )
+    logging.info("\n-------------------------------------------------\n")
 
     base_url = "https://www.cnn.com"
     articles = scrape_homepage(base_url, 

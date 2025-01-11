@@ -3,11 +3,11 @@
 # install runpodctl with: wget -qO- cli.runpod.net | sudo bash
 # setup api key before running this with: runpodctl config --apiKey $RUNPOD_API_KEY
 
-runpodctl create pod --args "bash -c 'cd /workspace/rooporter; bash run.sh; /start.sh'" \
+runpodctl create pod --args "bash -c 'cd /workspace/rooporter; bash run.sh > last_run_output; /start.sh'" \
                      --secureCloud \
                      --containerDiskSize 10 \
                      --gpuCount 1 \
-                     --gpuType "NVIDIA RTX A5000" \
+                     --gpuType "NVIDIA A40" \
                      --templateId "runpod-torch-v240" \
                      --imageName "runpod/pytorch:2.4.0-py3.11-cuda12.4.1-devel-ubuntu22.04" \
                      --name "rooporter_pod" \
