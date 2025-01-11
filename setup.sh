@@ -8,7 +8,7 @@ else
     apt update
     apt upgrade -y
     apt install ffmpeg vim tmux git cmake g++ htop rsync -y
-    apt install python3.10-venv
+    apt install --upgrade python3.10-venv
 fi
 
 if [ ! -d "logs" ]; then
@@ -21,13 +21,14 @@ if [ ! -d ".venv" ]; then
     source .venv/bin/activate
     pip install --upgrade pip wheel setuptools
     # TODO torch and flash-attn don't install right when using requirements.txt
+    pip install numpy
     pip install -r requirements.txt
     pip install torch
     pip install flash-attn
-    pip install -e .
+    python setup.py
 else
     source .venv/bin/activate
-    pip install -e .
+    python setup.py
 fi
 
 if [ ! -d "llama.cpp" ]; then
