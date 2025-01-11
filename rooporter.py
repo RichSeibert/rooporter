@@ -63,7 +63,7 @@ def generate_videos(save_file_name, prompt_info):
     args.embedded_cfg_scale = 6.0
     args.flow_shift = 7.0
     args.flow_reverse = True
-    args.dit_weight = "ckpts/mp_rank_00_model_states_fp8.pt"
+    args.dit_weight = "ckpts/hunyuan-video-t2v-720p/transformers/mp_rank_00_model_states_fp8.pt"
     args.use_fp8 = True
 
     models_root_path = Path("./ckpts")

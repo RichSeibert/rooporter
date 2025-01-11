@@ -9,7 +9,6 @@ audio_dir = "tmp/audio/"
 video_dir = "tmp/video/"
 setup_dirs([audio_dir, video_dir])
 
-# TODO this doesn't work, I still have to run manually
 import nltk
 nltk.download('averaged_perceptron_tagger_eng')
 
