@@ -18,6 +18,7 @@ import pickle
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
 from google_auth_oauthlib.flow import InstalledAppFlow
+from google.auth.transport.requests import Request
 
 # TODO this is shit, shouldn't have to modify the path for melo and hunyuan, but setup.py doesn't work
 import sys
