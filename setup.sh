@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# TODO figure out how to save off installed packages from apt/dnf into workspace dir so it's not deleted
+# TODO figure out how to save off installed packages from apt/dnf into workspace dir so they are not deleted when the instance is terminated
 if [ "$1" == "--dev" ]; then
     echo "Dev mode, installing extra packages for debug"
     # TODO this check is broken, just check if this dir exists
@@ -24,6 +24,13 @@ else
         apt install --upgrade python3.10-venv -y
     fi
 fi
+
+# TODO add git commands to pull newest commits. Will need to configure this so config is setup with git key, or other method
+# if [ ! -d "/workspace/.my-credentials" ]; then
+#   git config --global credential.helper 'store --file /workspace/.my-credentials'
+# fi
+# <command to load credentials using .my-credentials file>
+# git pull
 
 if [ ! -d "logs" ]; then
     mkdir logs
