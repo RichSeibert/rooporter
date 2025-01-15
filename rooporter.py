@@ -429,6 +429,7 @@ def parse_config(config):
     except Exception as e:
         logging.error(f"Config file issue: {e}")
 
+# TODO move this into a different repo, so it can be used in multiple projects
 class ManagerClient:
     def __init__(self):
         self.worker_id = str(uuid.uuid4())
