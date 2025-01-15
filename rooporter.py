@@ -10,6 +10,7 @@ from multiprocessing import set_start_method, Pool
 import wave
 import math
 import random
+import uuid
 
 import requests
 from bs4 import BeautifulSoup
@@ -428,6 +429,29 @@ def parse_config(config):
     except Exception as e:
         logging.error(f"Config file issue: {e}")
 
+class ManagerClient:
+    def __init__(self):
+        self.worker_id = str(uuid.uuid4())
+        logging.info(f"Worker ID: {self.worker_id}")
+        self.manager_url = "http://ec2-54-88-53-193.compute-1.amazonaws.com:8080"
+        with open("token.txt") as file:
+            token = file.read().split("\n")[0]
+            self.header = {"Authorization": token}
+
+    def register_with_manager(self):
+        try:
+            response = requests.post(f"{self.manager_url}/register-worker", json={"worker_id": self.worker_id}, headers=self.header)
+            logging.info(f"Registration response: {response.json()}")
+        except Exception as e:
+            logging.info(f"Failed to register with manager: {e}")
+
+    def notify_task_completed(self):
+        try:
+            response = requests.post(f"{self.manager_url}/task-completed", json={"worker_id": self.worker_id}, headers=self.header)
+            logging.info(f"Task completion response: {response.json()}")
+        except Exception as e:
+            logging.info(f"Failed to notify manager: {e}")
+
 def main():
     # TODO args cannot be used because they are picked up by the hunyuan video parser, and then an error will occur complaining about unrecognized args
     parser = argparse.ArgumentParser(description="Scrape news stories from CNN")
@@ -450,6 +474,10 @@ def main():
 		datefmt='%H:%M:%S'
     )
     logging.info("\n-------------------------------------------------\n")
+
+
+    manager_client = ManagerClient()
+    manager_client.register_with_manager()
 
     base_url = "https://www.cnn.com"
     articles = scrape_homepage(base_url, 
@@ -515,6 +543,8 @@ def main():
     title = f"NEWS {date_string_mdy()}"
     upload_to_youtube("tmp/"+output_file_name+".mp4", title)
 	# TODO use https://github.com/makiisthenes/TiktokAutoUploader to copy youtube video to tiktok
+
+    manager_client.notify_task_completed()
 
 if __name__ == "__main__":
     main()

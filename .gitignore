@@ -2,14 +2,15 @@
 MeloTTS
 HunyuanVideo
 llama.cpp
+
+# custom
+tokens.json
 models
 tmp
 runpod_api_key
 youtube_client_secret.json
 credentials.pkl
-
-# custom
-tokens.json
+token.txt
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
