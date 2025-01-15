@@ -358,54 +358,48 @@ def upload_to_youtube(video_path, title, description="", tags=None, category_id=
         with open("credentials.pkl", "rb") as token:
             credentials = pickle.load(token)
     except FileNotFoundError:
-        logging.info("No saved credentials found. Authenticating through browser")
+        logging.info("No saved credentials found")
 
     if not credentials or not credentials.valid:
         logging.info("Credentials don't exist or are not valid, refreshing them")
         if credentials and credentials.expired and credentials.refresh_token:
             credentials.refresh(Request())
         else:
-            flow = InstalledAppFlow.from_client_secrets_file("youtube_client_secret.json", SCOPES)
-            credentials = flow.run_local_server(port=0)
+            logging.error("Need to authenticate through browser, exiting")
+            return
+            #flow = InstalledAppFlow.from_client_secrets_file("youtube_client_secret.json", SCOPES)
+            #credentials = flow.run_local_server(port=0)
 
         with open("credentials.pkl", "wb") as token:
             pickle.dump(credentials, token)
             logging.info("Credentials saved to credentials.pkl")
 
-    youtube = build("youtube", "v3", credentials=credentials)
-    body = {
-        "snippet": {
-            "title": title,
-            "description": description,
-            "tags": tags if tags else [],
-            "categoryId": category_id,
-        },
-        "status": {
-            "privacyStatus": "public",
-        },
-    }
-    media = MediaFileUpload(video_path, chunksize=-1, resumable=True, mimetype="video/mp4")
-    request = youtube.videos().insert(part="snippet,status", body=body, media_body=media)
+    try:
+        youtube = build("youtube", "v3", credentials=credentials)
+        body = {
+            "snippet": {
+                "title": title,
+                "description": description,
+                "tags": tags if tags else [],
+                "categoryId": category_id,
+            },
+            "status": {
+                "privacyStatus": "public",
+            },
+        }
+        media = MediaFileUpload(video_path, chunksize=-1, resumable=True, mimetype="video/mp4")
+        request = youtube.videos().insert(part="snippet,status", body=body, media_body=media)
+    except Exception as e:
+        logging.error(f"Failed to create youtube request: {e}")
+        return
 
     response = None
     while response is None:
         status, response = request.next_chunk()
         if status:
             logging.info(f"Uploaded {int(status.progress() * 100)}%...")
-    logging.info("Upload finished")
+    logging.info(f"Upload finished. Response: {response}")
     return response
-
-def delete_tmp_files(audio_dir="tmp/audio", video_dir="tmp/videos"):
-    audio_path = Path(audio_dir)
-    video_path = Path(video_dir)
-    if audio_path.exists() and audio_path.is_dir():
-        for file in audio_path.glob("*"):
-            if file.is_file():
-                file.unlink()
-    if video_path.exists() and video_path.is_dir():
-        for file in video_path.glob("*"):
-            if file.is_file():
-                file.unlink()
 
 def date_string_mdy():
     now = datetime.now()
@@ -521,9 +515,6 @@ def main():
     title = f"NEWS {date_string_mdy()}"
     upload_to_youtube("tmp/"+output_file_name+".mp4", title)
 	# TODO use https://github.com/makiisthenes/TiktokAutoUploader to copy youtube video to tiktok
-
-	# TODO uncomment this when running for real
-    # delete_tmp_files()
 
 if __name__ == "__main__":
     main()
