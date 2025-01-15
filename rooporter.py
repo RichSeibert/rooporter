@@ -358,9 +358,10 @@ def upload_to_youtube(video_path, title, description="", tags=None, category_id=
         with open("credentials.pkl", "rb") as token:
             credentials = pickle.load(token)
     except FileNotFoundError:
-        print("No saved credentials found. Authenticating through browser")
+        logging.info("No saved credentials found. Authenticating through browser")
 
     if not credentials or not credentials.valid:
+        logging.info("Credentials don't exist or are not valid, refreshing them")
         if credentials and credentials.expired and credentials.refresh_token:
             credentials.refresh(Request())
         else:
@@ -369,7 +370,7 @@ def upload_to_youtube(video_path, title, description="", tags=None, category_id=
 
         with open("credentials.pkl", "wb") as token:
             pickle.dump(credentials, token)
-            print("Credentials saved to credentials.pkl")
+            logging.info("Credentials saved to credentials.pkl")
 
     youtube = build("youtube", "v3", credentials=credentials)
     body = {
@@ -518,7 +519,7 @@ def main():
     process_videos_and_audio(audio_to_video_files, output_file_name)
 
     title = f"NEWS {date_string_mdy()}"
-    upload_to_youtube("tmp/"+output_file_name, title)
+    upload_to_youtube("tmp/"+output_file_name+".mp4", title)
 	# TODO use https://github.com/makiisthenes/TiktokAutoUploader to copy youtube video to tiktok
 
 	# TODO uncomment this when running for real
