@@ -1,10 +1,11 @@
 #!/bin/bash
 
 # TODO figure out how to save off installed packages from apt/dnf into workspace dir so they are not deleted when the instance is terminated
+source /etc/os-release
 if [ "$1" == "--dev" ]; then
     echo "Dev mode, installing extra packages for debug"
     # TODO this check is broken, just check if this dir exists
-    if [ grep -q "Red Hat" /etc/redhat-release ]; then
+    if [ $ID_LIKE == "fedora" ]; then
         sudo dnf install ffmpeg vim tmux git cmake g++ htop rsync -y
     else
         apt update
@@ -14,8 +15,7 @@ if [ "$1" == "--dev" ]; then
     fi
 else
     echo "Installing packages"
-    # TODO this check is broken, just check if this dir exists
-    if [ grep -q "Red Hat" /etc/redhat-release ]; then
+    if [ $ID_LIKE == "fedora" ]; then
         sudo dnf install ffmpeg git -y
     else
         apt update
