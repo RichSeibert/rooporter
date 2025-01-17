@@ -53,21 +53,29 @@ else
     python setup.py
 fi
 
-if [ ! -d "llama.cpp" ]; then
+if [ ! -L "llama.cpp" ]; then
     echo "Creating llama.cpp"
-    git clone https://github.com/ggerganov/llama.cpp.git
-    cd llama.cpp
-    # Comment out cuda flag if not using GPU
-    cmake -B build -DGGML_CUDA=ON
-    # Change "-j" arg to number of cores
-    cmake --build build --config Release -j 8
-    cd ..
+    if [ ! -d "../llama.cpp" ]; then
+        cd ..
+        git clone https://github.com/ggerganov/llama.cpp.git
+        cd llama.cpp
+        # Comment out cuda flag if not using GPU
+        cmake -B build -DGGML_CUDA=ON
+        # Change "-j" arg to number of cores
+        cmake --build build --config Release -j 8
+        cd ..
+        cd rooporter
+    fi
+    ln -s ../llama.cpp llama.cpp
 fi
 
-if [ ! -d "models" ]; then
+if [ ! -L "models" ]; then
     echo "Downloading models"
-    mkdir models
-    huggingface-cli download bartowski/Llama-3.1-8B-Lexi-Uncensored-V2-GGUF Llama-3.1-8B-Lexi-Uncensored-V2-Q8_0.gguf --local-dir ./models
+    if [ ! -d "../models" ]; then
+        mkdir ../models
+    fi
+    huggingface-cli download bartowski/Llama-3.1-8B-Lexi-Uncensored-V2-GGUF Llama-3.1-8B-Lexi-Uncensored-V2-Q8_0.gguf --local-dir ../models
+    ln -s ../models models
 fi
 
 if [ ! -d "MeloTTS" ]; then
