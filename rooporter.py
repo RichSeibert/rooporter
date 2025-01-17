@@ -45,7 +45,6 @@ class PromptInfo:
             self.prompt_type = self.video_prompt
 
 def generate_videos(save_file_name, prompt_info):
-    # TODO sometimes the logger crashes in here due to multithreading issue
     # TODO this is very slow. Each time the entire model needs to be loaded again. Change this so all the prompts are passed in and I loop the predict in here
     logging.info("Generating videos")
     # have to change dir, some of the hunyuan scripts have hardcoded paths that expect the cwd to be HunyuanVideo
@@ -215,7 +214,8 @@ def generate_text(prompt_info, settings):
                  "-ngl", gpu_layers,
                  "--temp", "0.9",
                  "-c", context_len,
-                 "-p", complete_prompt],
+                 "-p", complete_prompt,
+                 "-no-cnv"],
                 capture_output=True,
                 text=True
             )
@@ -536,6 +536,7 @@ def main():
                 audio_to_video_files[id_s].append(video_file_name)
 
     # TODO add fade between each grouping of videos, and maybe include an intro video
+    # TODO add background music
     # TODO add subtitles for narration
     time_stamp = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
     output_file_name = f"finished_video_{time_stamp}"
