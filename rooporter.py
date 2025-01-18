@@ -109,7 +109,7 @@ def generate_videos(save_file_name, prompt_info):
 
 def process_videos_and_audio(audio_video_mapping, output_file_name):
     logging.info("Processing videos and audio")
-    intermediate_videos = []
+    intermediate_videos = ["intro_video/intro_video.mp4"]
 
     # Process each audio and associated video files
     audio_path = "tmp/audio/"
@@ -144,7 +144,7 @@ def process_videos_and_audio(audio_video_mapping, output_file_name):
 
         # Add the audio to the combined video
         audio_video_output = Path(f"output_{audio_file.stem}.mp4")
-        final_command = [
+        add_audio = [
             "ffmpeg",
             "-i", str(combined_video),
             "-i", str(audio_file),
@@ -153,7 +153,7 @@ def process_videos_and_audio(audio_video_mapping, output_file_name):
             "-strict", "experimental",
             str(audio_video_output)
         ]
-        subprocess.run(final_command, check=True)
+        subprocess.run(add_audio, check=True)
 
         # Clean up intermediate video and add to the list for final combination
         combined_video.unlink()  # Remove intermediate combined video
@@ -168,14 +168,17 @@ def process_videos_and_audio(audio_video_mapping, output_file_name):
         for video in intermediate_videos:
             f.write(f"file '{video.resolve()}'\n")
 
-    combine_all_command = [
-        "ffmpeg",
-        "-f", "concat",
-        "-safe", "0",
-        "-i", str(final_list_file),
-        "-c", "copy",
-        f"tmp/{output_file_name}.mp4"
-    ]
+    
+	combine_all_command = [
+		"ffmpeg",
+		"-f", "concat",
+		"-safe", "0",
+		"-i", str(final_list_file),
+		"-c:v", "libx264",
+		"-crf", "23",
+		"-preset", "fast",
+		"-y", f"tmp/{output_file_name}.mp4"
+	]
     subprocess.run(combine_all_command, check=True)
 
     # Clean up intermediate videos and the final list file
@@ -536,6 +539,7 @@ def main():
                 audio_to_video_files[id_s].append(video_file_name)
 
     # TODO add fade between each grouping of videos, and maybe include an intro video
+    # TODO generate different prompt for each video instead of multiple videos from the same prompt
     # TODO add background music
     # TODO add subtitles for narration
     time_stamp = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
