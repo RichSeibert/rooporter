@@ -109,7 +109,7 @@ def generate_videos(save_file_name, prompt_info):
 
 def process_videos_and_audio(audio_video_mapping, output_file_name):
     logging.info("Processing videos and audio")
-    intermediate_videos = ["intro_video/intro_video.mp4"]
+    intermediate_videos = []
 
     # Process each audio and associated video files
     audio_path = "tmp/audio/"
@@ -165,20 +165,19 @@ def process_videos_and_audio(audio_video_mapping, output_file_name):
     # Combine all processed videos into one final output
     final_list_file = Path("final_video_list.txt")
     with final_list_file.open("w") as f:
+        f.write("file 'intro_video/intro_video_lower_volume.mp4'\n")
         for video in intermediate_videos:
             f.write(f"file '{video.resolve()}'\n")
 
-    
-	combine_all_command = [
-		"ffmpeg",
-		"-f", "concat",
-		"-safe", "0",
-		"-i", str(final_list_file),
-		"-c:v", "libx264",
-		"-crf", "23",
-		"-preset", "fast",
-		"-y", f"tmp/{output_file_name}.mp4"
-	]
+    combine_all_command = [
+        "ffmpeg",
+        "-f", "concat",
+        "-safe", "0",
+        "-i", str(final_list_file),
+        "-c:v", "libopenh264",
+        "-crf", "18",
+        "-y", f"tmp/{output_file_name}.mp4"
+    ]
     subprocess.run(combine_all_command, check=True)
 
     # Clean up intermediate videos and the final list file
@@ -412,9 +411,6 @@ def date_string_mdy():
     return formatted_date
 
 def get_day_suffix(day):
-    """
-    Returns the appropriate suffix for a given day.
-    """
     if 11 <= day <= 13:  # Special case for 11th, 12th, 13th
         return "th"
     return {1: "st", 2: "nd", 3: "rd"}.get(day % 10, "th")
@@ -480,6 +476,7 @@ def main():
     logging.info("\n-------------------------------------------------\n")
 
 
+    # register with host server
     manager_client = ManagerClient()
     manager_client.register_with_manager()
 
@@ -538,7 +535,7 @@ def main():
             if not rc:
                 audio_to_video_files[id_s].append(video_file_name)
 
-    # TODO add fade between each grouping of videos, and maybe include an intro video
+    # TODO add fade between each grouping of videos
     # TODO generate different prompt for each video instead of multiple videos from the same prompt
     # TODO add background music
     # TODO add subtitles for narration
