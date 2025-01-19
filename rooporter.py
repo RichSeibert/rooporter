@@ -174,7 +174,7 @@ def process_videos_and_audio(audio_video_mapping, output_file_name):
         "-f", "concat",
         "-safe", "0",
         "-i", str(final_list_file),
-        "-c:v", "libopenh264",
+        "-c:v", "copy",
         "-crf", "18",
         "-y", f"tmp/{output_file_name}.mp4"
     ]
@@ -235,15 +235,15 @@ def generate_text(prompt_info, settings):
     return outputs
 
 def tts(data):
-        file_name, text = data
-        speed = 1.25
-        # WARN - meloTTS doesn't clean up gpu memmory. Using multiprocess fixes
-        # this and adds the benefit of parallization
-        device = 'auto' # Will automatically use GPU if available
-        model = TTS(language='EN', device=device)
-        speaker_ids = model.hps.data.spk2id
-        output_path = f"tmp/audio/{file_name}.wav"
-        model.tts_to_file(text, speaker_ids['EN-US'], output_path, speed=speed)
+    file_name, text = data
+    speed = 1.25
+    # WARN - meloTTS doesn't clean up gpu memmory. Using multiprocess fixes
+    # this and adds the benefit of parallization
+    device = 'auto' # Will automatically use GPU if available
+    model = TTS(language='EN', device=device)
+    speaker_ids = model.hps.data.spk2id
+    output_path = f"tmp/audio/{file_name}.wav"
+    model.tts_to_file(text, speaker_ids['EN-US'], output_path, speed=speed)
 
 def generate_audio(input_data, pool_size):
     logging.info("Generating audio")
@@ -302,12 +302,14 @@ def scrape_homepage(base_url, limit=5):
         return []
     
     soup = BeautifulSoup(response.content, 'html.parser')
+    logging.debug(f"Website html content - {soup}")
     articles = []
     
     # Find article links matching the pattern
     article_id = 0
     seen_hrefs = set()
-    for link in soup.find_all('a', "container__link container__link--type-article container_lead-package__link container_lead-package__left container_lead-package__light", href=True):
+    possible_article_data = soup.find_all('a', "container__link container__link--type-article", href=True)
+    for link in possible_article_data:
         href = link['href']
         if href in seen_hrefs:
             continue
@@ -326,6 +328,9 @@ def scrape_homepage(base_url, limit=5):
         except Exception as e:
             logging.error(f"Error while processing article at {article_url}: {e}")
                 
+    if len(articles) != limit:
+        logging.warning(f"Didn't find enough articles to meet article limit - {limit}")
+        logging.warning(f"All scraped data - {possible_article_data}")
     return articles
 
 def get_wav_duration(directory):
@@ -361,7 +366,7 @@ def upload_to_youtube(video_path, title, description="", tags=None, category_id=
         with open("credentials.pkl", "rb") as token:
             credentials = pickle.load(token)
     except FileNotFoundError:
-        logging.info("No saved credentials found")
+        logging.info("No saved credentials found, will generate them")
 
     if not credentials or not credentials.valid:
         logging.info("Credentials don't exist or are not valid, refreshing them")
@@ -443,19 +448,18 @@ class ManagerClient:
             response = requests.post(f"{self.manager_url}/register-worker", json={"worker_id": self.worker_id}, headers=self.header)
             logging.info(f"Registration response: {response.json()}")
         except Exception as e:
-            logging.info(f"Failed to register with manager: {e}")
+            logging.error(f"Failed to register with manager: {e}")
 
     def notify_task_completed(self):
         try:
             response = requests.post(f"{self.manager_url}/task-completed", json={"worker_id": self.worker_id}, headers=self.header)
             logging.info(f"Task completion response: {response.json()}")
         except Exception as e:
-            logging.info(f"Failed to notify manager: {e}")
+            logging.error(f"Failed to notify manager: {e}")
 
 def main():
     # TODO args cannot be used because they are picked up by the hunyuan video parser, and then an error will occur complaining about unrecognized args
     parser = argparse.ArgumentParser(description="Scrape news stories from CNN")
-    parser.add_argument('--limit', type=int, default=5, help="Number of articles to scrape")
     parser.add_argument('--log', type=str, default='info', help="Log level (debug, info, warning, error, critical)")
     args = parser.parse_args()
 
@@ -481,8 +485,11 @@ def main():
     manager_client.register_with_manager()
 
     base_url = "https://www.cnn.com"
-    articles = scrape_homepage(base_url, 
-                               config_settings["number_of_articles"])
+    articles = scrape_homepage(base_url, config_settings["number_of_articles"])
+    if not articles:
+        logging.critical("No articles scraped")
+        manager_client.notify_task_completed()
+        return
 
     # TODO this is shit
     # generate summarized version of each article
@@ -495,20 +502,31 @@ def main():
         articles[i]["summary"] = summary
 
     # turn article summaries into audio
-    generate_audio([(article["id"], article["summary"]) for article in articles],
-                   config_settings["tts_worker_pool_size"])
+    try:
+        articles_id_and_summary = [(article["id"], article["summary"]) for article in articles]
+        generate_audio(articles_id_and_summary , config_settings["tts_worker_pool_size"])
+    except Exception as e:
+        logging.critical(f"Failed to generate audio - {e}")
+        logging.info(f"Article data: {articles}")
+        manager_client.notify_task_completed()
+        return
 
     # generate video generation prompt for each article
     summarized_articles = [a["summary"] for a in articles] 
     prompt_info = PromptInfo(PromptInfo.video_prompt, 
                              summarized_articles)
     video_prompt_prompt_info = prompt_info
-    for i, video_prompt in enumerate(generate_text(video_prompt_prompt_info,
-                                                   config_settings)):
-        articles[i]["video_prompt"] = video_prompt
-    logging.debug(f"Article data: {articles}")
+    try:
+        for i, video_prompt in enumerate(generate_text(video_prompt_prompt_info, config_settings)):
+            articles[i]["video_prompt"] = video_prompt
+    except Exception as e:
+        logging.critical(f"Failed to generate video prompts - {e}")
+        logging.info(f"Article data: {articles}")
+        manager_client.notify_task_completed()
+        return
 
-    # Generate videos. Will generate multiple <video_duration> second videos for each audio clip to cover the entire clip and more. Output file format is <audio_file_id>_<video_file_id>.mp4
+    # Generate videos. Will generate multiple <video_duration> second videos 
+    # for each audio clip to cover the entire clip and more. Output file format is <audio_file_id>_<video_file_id>.mp4
     audio_dir = "tmp/audio"
     audio_file_durations = get_wav_duration(audio_dir)
     video_prompts_info = {}
@@ -541,6 +559,7 @@ def main():
     # TODO add subtitles for narration
     time_stamp = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
     output_file_name = f"finished_video_{time_stamp}"
+    #audio_to_video_files = {"0": ["0_0", "0_1", "0_2", "0_3"], "1": ["1_0", "1_1", "1_2", "1_3"]}
     process_videos_and_audio(audio_to_video_files, output_file_name)
 
     title = f"NEWS {date_string_mdy()}"
