@@ -570,6 +570,7 @@ def main():
     upload_to_youtube("tmp/"+output_file_name+".mp4", title)
 	# TODO use https://github.com/makiisthenes/TiktokAutoUploader to copy youtube video to tiktok
 
+    # TODO add cleanup for logs and finished video files
     manager_client.notify_task_completed()
 
 if __name__ == "__main__":
