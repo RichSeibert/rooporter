@@ -11,6 +11,7 @@ import wave
 import math
 import random
 import uuid
+import re
 
 import requests
 from bs4 import BeautifulSoup
@@ -308,7 +309,7 @@ def scrape_homepage(base_url, limit=5):
     # Find article links matching the pattern
     article_id = 0
     seen_hrefs = set()
-    possible_article_data = soup.find_all('a', "container__link container__link--type-article", href=True)
+    possible_article_data = soup.find_all('a', re.compile("container__link container__link--type-article*"), href=True)
     for link in possible_article_data:
         href = link['href']
         if href in seen_hrefs:
@@ -434,6 +435,9 @@ def parse_config(config):
         logging.error(f"Config file issue: {e}")
 
 # TODO move this into a different repo, so it can be used in multiple projects
+# TODO this should not be called from within this script or another. It should
+# should be in a standalone file so it can be ran from the command line start
+# up commands. For example, "client.py register; roobot.py; rooporter.py; client.py terminate;"
 class ManagerClient:
     def __init__(self):
         self.worker_id = str(uuid.uuid4())
