@@ -73,7 +73,7 @@ def generate_videos(audio_id_to_videos_generation_data):
     args = hunyuan_video_sampler.args
 
     audio_to_video_files = {}
-    for audio_id, videos_to_generate_data in audio_id_to_videos_generation_data:
+    for audio_id, videos_to_generate_data in audio_id_to_videos_generation_data.items():
         audio_to_video_files[audio_id] = []
         for sub_id, video_data in enumerate(videos_to_generate_data):
             args.prompt = video_data["prompt"]
