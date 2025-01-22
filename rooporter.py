@@ -135,6 +135,7 @@ def process_videos_and_audio(audio_video_mapping, output_file_name):
         combined_video = Path(f"combined_{audio_file.stem}.mp4")
         combine_command = [
             "ffmpeg",
+            "-y",
             "-f", "concat",
             "-safe", "0",
             "-i", str(temp_list_file),
@@ -147,6 +148,7 @@ def process_videos_and_audio(audio_video_mapping, output_file_name):
         audio_video_output = Path(f"output_{audio_file.stem}.mp4")
         add_audio = [
             "ffmpeg",
+            "-y",
             "-i", str(combined_video),
             "-i", str(audio_file),
             "-c:v", "copy",
@@ -172,6 +174,7 @@ def process_videos_and_audio(audio_video_mapping, output_file_name):
 
     combine_all_command = [
         "ffmpeg",
+        "-y",
         "-f", "concat",
         "-safe", "0",
         "-i", str(final_list_file),
@@ -534,6 +537,8 @@ def main():
     audio_dir = "tmp/audio"
     audio_file_durations = get_wav_duration(audio_dir)
     video_prompts_info = {}
+    # TODO new model doesn't take as much ram. Test with hunyuan cli and see
+    # if I can increase the duration. Only seems to hit 62% VRAM
     video_duration = 4
     for a in articles:
         id_ = a["id"]
