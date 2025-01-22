@@ -45,20 +45,21 @@ class PromptInfo:
             self.system_prompt = "Write a short, simple, descriptive, and funny 2 sentence scene of following article. Only describe the visuals of the scene. Do not write anything except for the prompt. Do not include the time duration of the video. Here is an example prompt: 'A stylish woman walks down a Tokyo street filled with warm glowing neon and animated city signage. She wears a black leather jacket, a long red dress, and black boots, and carries a black purse. She wears sunglasses and red lipstick. She walks confidently and casually. The street is damp and reflective, creating a mirror effect of the colorful lights. Many pedestrians walk about.'"
             self.prompt_type = self.video_prompt
 
-def generate_videos(save_file_name, prompt_info):
+def generate_videos(audio_id_to_videos_generation_data):
     # TODO this is very slow. Each time the entire model needs to be loaded again. Change this so all the prompts are passed in and I loop the predict in here
     logging.info("Generating videos")
     # have to change dir, some of the hunyuan scripts have hardcoded paths that expect the cwd to be HunyuanVideo
     os.chdir("HunyuanVideo")
+    models_root_path = Path("./ckpts")
+    if not models_root_path.exists():
+        logging.critical(f"Model directory `./ckpts` not found")
+        raise Exception("./ckpts dir not found in HunyuanVideo directory")
 
     args = hy_parse_args() 
-    args.prompt = prompt_info["prompt"]
     args.video_size = (960, 544)
     # determine video length from length of voiceover. Framerate is 24
     args.fps = 24
-    args.video_length = (prompt_info["duration"] * args.fps) + 1
-    args.seed = random.randint(1,999999)
-    args.infer_steps = 35
+    args.infer_steps = 30
     args.use_cpu_offload = True
     args.embedded_cfg_scale = 6.0
     args.flow_shift = 7.0
@@ -66,47 +67,50 @@ def generate_videos(save_file_name, prompt_info):
     args.dit_weight = "ckpts/hunyuan-video-t2v-720p/transformers/mp_rank_00_model_states_fp8.pt"
     args.use_fp8 = True
 
-    models_root_path = Path("./ckpts")
-    if not models_root_path.exists():
-        logging.error(f"Model directory `./ckpts` not found")
-        return 1
+    # Load models
+    hunyuan_video_sampler = HunyuanVideoSampler.from_pretrained(models_root_path, args=args)
+    # Get the updated args
+    args = hunyuan_video_sampler.args
 
-    try:
-        # Load models
-        hunyuan_video_sampler = HunyuanVideoSampler.from_pretrained(models_root_path, args=args)
-        
-        # Get the updated args
-        args = hunyuan_video_sampler.args
+    audio_to_video_files = {}
+    for audio_id, videos_to_generate_data in audio_id_to_videos_generation_data:
+        audio_to_video_files[audio_id] = []
+        for sub_id, video_data in enumerate(videos_to_generate_data):
+            args.prompt = video_data["prompt"]
+            args.video_length = (video_data["duration"] * args.fps) + 1
+            args.seed = random.randint(1,999999)
+            logging.info(f"Generate video with prompt - {args.prompt}, and duration - {args.duration} ")
+            try:
+                # Start sampling
+                outputs = hunyuan_video_sampler.predict(
+                    prompt=args.prompt,
+                    height=args.video_size[0],
+                    width=args.video_size[1],
+                    video_length=args.video_length,
+                    seed=args.seed,
+                    negative_prompt=args.neg_prompt,
+                    infer_steps=args.infer_steps,
+                    guidance_scale=args.cfg_scale,
+                    num_videos_per_prompt=args.num_videos,
+                    flow_shift=args.flow_shift,
+                    batch_size=args.batch_size,
+                    embedded_guidance_scale=args.embedded_cfg_scale
+                )
+                samples = outputs['samples']
+                # Save samples
+                if 'LOCAL_RANK' not in os.environ or int(os.environ['LOCAL_RANK']) == 0:
+                    for i, sample in enumerate(samples):
+                        sample = samples[i].unsqueeze(0)
+                        save_file_name = video_data["ttv_output_file_name"]
+                        save_path = f"../tmp/video/{save_file_name}.mp4"
+                        save_videos_grid(sample, save_path, fps=args.fps)
+                        logging.info(f'Sample save to: {save_path}')
+                audio_to_video_files[audio_id].append(audio_id + '_' + str(sub_id))
+            except Exception as e:
+                logging.error(f"Failed to generate video: {e}")
 
-        # Start sampling
-        outputs = hunyuan_video_sampler.predict(
-            prompt=args.prompt, 
-            height=args.video_size[0],
-            width=args.video_size[1],
-            video_length=args.video_length,
-            seed=args.seed,
-            negative_prompt=args.neg_prompt,
-            infer_steps=args.infer_steps,
-            guidance_scale=args.cfg_scale,
-            num_videos_per_prompt=args.num_videos,
-            flow_shift=args.flow_shift,
-            batch_size=args.batch_size,
-            embedded_guidance_scale=args.embedded_cfg_scale
-        )
-        samples = outputs['samples']
-        
-        # Save samples
-        if 'LOCAL_RANK' not in os.environ or int(os.environ['LOCAL_RANK']) == 0:
-            for i, sample in enumerate(samples):
-                sample = samples[i].unsqueeze(0)
-                save_path = f"../tmp/video/{save_file_name}.mp4"
-                save_videos_grid(sample, save_path, fps=args.fps)
-                logging.info(f'Sample save to: {save_path}')
-        os.chdir("..")
-    except Exception as e:
-        logging.error(f"Failed to generate video: {e}")
-        os.chdir("..")
-        return 1
+    os.chdir("..")
+    return audio_to_video_files
 
 def process_videos_and_audio(audio_video_mapping, output_file_name):
     logging.info("Processing videos and audio")
@@ -501,9 +505,8 @@ def main():
     # TODO this is shit
     # generate summarized version of each article
     article_texts = [a["text"] for a in articles]
-    prompt_info = PromptInfo(PromptInfo.article_summary, 
-                             article_texts)
-    article_summary_prompt_info = prompt_info
+    article_summary_prompt_info = PromptInfo(PromptInfo.article_summary,
+                                             article_texts)
     for i, summary in enumerate(generate_text(article_summary_prompt_info,
                                               config_settings)):
         articles[i]["summary"] = summary
@@ -520,9 +523,8 @@ def main():
 
     # generate video generation prompt for each article
     summarized_articles = [a["summary"] for a in articles] 
-    prompt_info = PromptInfo(PromptInfo.video_prompt, 
-                             summarized_articles)
-    video_prompt_prompt_info = prompt_info
+    video_prompt_prompt_info = PromptInfo(PromptInfo.video_prompt,
+                                          summarized_articles)
     try:
         for i, video_prompt in enumerate(generate_text(video_prompt_prompt_info, config_settings)):
             articles[i]["video_prompt"] = video_prompt
@@ -536,31 +538,30 @@ def main():
     # for each audio clip to cover the entire clip and more. Output file format is <audio_file_id>_<video_file_id>.mp4
     audio_dir = "tmp/audio"
     audio_file_durations = get_wav_duration(audio_dir)
-    video_prompts_info = {}
+    video_generation_data = {}
     # TODO new model doesn't take as much ram. Test with hunyuan cli and see
     # if I can increase the duration. Only seems to hit 62% VRAM
     video_duration = 4
     for a in articles:
-        id_ = a["id"]
-        video_prompts_info[id_] = {"prompt": a["video_prompt"],
-                                   "duration": video_duration}
-    audio_to_video_files = {}
-    for id_, prompt_info in video_prompts_info.items():
-        id_s = str(id_)
-        audio_to_video_files[id_s] = []
+        id_s = str(a["id"])
+        video_generation_data[id_s] = []
         num_videos = math.ceil(audio_file_durations[id_s]/video_duration)
         for sub_id in range(num_videos):
             # for the last video, make it so the combined durations of all 
             # videos is audio_duraiton + 1
+            custom_duration = video_duration
             if sub_id == num_videos-1:
                 if audio_file_durations[id_s] % video_duration == 0:
-                    prompt_info["duration"] += 1
+                    custom_duration += 1
                 else:
-                    prompt_info["duration"] = (audio_file_durations[id_s] % video_duration) + 1
-            video_file_name = id_s + "_" + str(sub_id) 
-            rc = generate_videos(video_file_name, prompt_info)
-            if not rc:
-                audio_to_video_files[id_s].append(video_file_name)
+                    custom_duration = (audio_file_durations[id_s] % video_duration) + 1
+            ttv_output_file_name = id_s + "_" + str(sub_id)
+            video_data = {"prompt": a["video_prompt"],
+                          "duration": custom_duration,
+                          "ttv_output_file_name": ttv_output_file_name}
+            video_generation_data[id_s].append(video_data)
+
+    audio_to_video_files = generate_videos(video_generation_data)
 
     # TODO add fade between each grouping of videos
     # TODO generate different prompt for each video instead of multiple videos from the same prompt
