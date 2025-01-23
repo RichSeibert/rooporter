@@ -79,7 +79,7 @@ def generate_videos(audio_id_to_videos_generation_data):
             args.prompt = video_data["prompt"]
             args.video_length = (video_data["duration"] * args.fps) + 1
             args.seed = random.randint(1,999999)
-            logging.info(f"Generate video with prompt - {args.prompt}, and duration - {args.duration} ")
+            logging.info(f"Generate video with prompt - {args.prompt}, and duration - {video_data['duration']} ")
             try:
                 # Start sampling
                 outputs = hunyuan_video_sampler.predict(
@@ -496,7 +496,12 @@ def main():
     manager_client.register_with_manager()
 
     base_url = "https://www.cnn.com"
-    articles = scrape_homepage(base_url, config_settings["number_of_articles"])
+    try:
+        articles = scrape_homepage(base_url, config_settings["number_of_articles"])
+    except Exception as e:
+        logging.critical(f"Failed to scrape website - {e}")
+        manager_client.notify_task_completed()
+        return
     if not articles:
         logging.critical("No articles scraped")
         manager_client.notify_task_completed()
@@ -561,7 +566,13 @@ def main():
                           "ttv_output_file_name": ttv_output_file_name}
             video_generation_data[id_s].append(video_data)
 
-    audio_to_video_files = generate_videos(video_generation_data)
+    try:
+        audio_to_video_files = generate_videos(video_generation_data)
+    except Exception as e:
+        logging.critical(f"Failed to generate videos - {e}")
+        logging.info(f"Video generation data: {video_generation_data}")
+        manager_client.notify_task_completed()
+        return
 
     # TODO add fade between each grouping of videos
     # TODO generate different prompt for each video instead of multiple videos from the same prompt
@@ -570,11 +581,22 @@ def main():
     time_stamp = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
     output_file_name = f"finished_video_{time_stamp}"
     #audio_to_video_files = {"0": ["0_0", "0_1", "0_2", "0_3"], "1": ["1_0", "1_1", "1_2", "1_3"]}
-    process_videos_and_audio(audio_to_video_files, output_file_name)
+    try:
+        process_videos_and_audio(audio_to_video_files, output_file_name)
+    except Exception as e:
+        logging.critical(f"Failed to process videos and audio - {e}")
+        logging.info(f"Audio and video files: {audio_to_video_files}")
+        manager_client.notify_task_completed()
+        return
 
-    title = f"NEWS {date_string_mdy()}"
-    upload_to_youtube("tmp/"+output_file_name+".mp4", title)
 	# TODO use https://github.com/makiisthenes/TiktokAutoUploader to copy youtube video to tiktok
+    title = f"NEWS {date_string_mdy()}"
+    try:
+        upload_to_youtube("tmp/"+output_file_name+".mp4", title)
+    except Exception as e:
+        logging.critical(f"Failed to upload to youtube - {e}")
+        manager_client.notify_task_completed()
+        return
 
     # TODO add cleanup for logs and finished video files
     manager_client.notify_task_completed()
