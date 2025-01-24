@@ -46,7 +46,6 @@ class PromptInfo:
             self.prompt_type = self.video_prompt
 
 def generate_videos(audio_id_to_videos_generation_data):
-    # TODO this is very slow. Each time the entire model needs to be loaded again. Change this so all the prompts are passed in and I loop the predict in here
     logging.info("Generating videos")
     # have to change dir, some of the hunyuan scripts have hardcoded paths that expect the cwd to be HunyuanVideo
     os.chdir("HunyuanVideo")
