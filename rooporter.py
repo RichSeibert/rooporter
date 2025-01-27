@@ -36,6 +36,7 @@ from hyvideo.inference import HunyuanVideoSampler
 class PromptInfo:
     article_summary = "article_summary"
     video_prompt = "video_prompt"
+    article_to_title = "article_to_title"
     def __init__(self, prompt_type, prompt_data):
         self.prompts = prompt_data
         if prompt_type == self.article_summary:
@@ -44,6 +45,9 @@ class PromptInfo:
         elif prompt_type == self.video_prompt:
             self.system_prompt = "Write a short, simple, descriptive, and funny 2 sentence scene of following article. Only describe the visuals of the scene. Do not write anything except for the prompt. Do not include the time duration of the video. Here is an example prompt: 'A stylish woman walks down a Tokyo street filled with warm glowing neon and animated city signage. She wears a black leather jacket, a long red dress, and black boots, and carries a black purse. She wears sunglasses and red lipstick. She walks confidently and casually. The street is damp and reflective, creating a mirror effect of the colorful lights. Many pedestrians walk about.'"
             self.prompt_type = self.video_prompt
+        elif prompt_type == self.article_to_title:
+            self.system_prompt = "Summarize the input article into a 5-10 word title. It must be 70 characters or less."
+            self.prompt_type = self.article_to_title
 
 def generate_videos(audio_id_to_videos_generation_data):
     logging.info("Generating videos")
@@ -416,17 +420,6 @@ def upload_to_youtube(video_path, title, description="", tags=None, category_id=
     logging.info(f"Upload finished. Response: {response}")
     return response
 
-def date_string_mdy():
-    now = datetime.now()
-    day_suffix = get_day_suffix(now.day)
-    formatted_date = now.strftime(f"%b {now.day}{day_suffix}, %Y")
-    return formatted_date
-
-def get_day_suffix(day):
-    if 11 <= day <= 13:  # Special case for 11th, 12th, 13th
-        return "th"
-    return {1: "st", 2: "nd", 3: "rd"}.get(day % 10, "th")
-
 def parse_config(config):
     config_settings = {}
     try:
@@ -467,54 +460,25 @@ class ManagerClient:
         except Exception as e:
             logging.error(f"Failed to notify manager: {e}")
 
-def main():
-    # TODO args cannot be used because they are picked up by the hunyuan video parser, and then an error will occur complaining about unrecognized args
-    parser = argparse.ArgumentParser(description="Scrape news stories from CNN")
-    parser.add_argument('--log', type=str, default='info', help="Log level (debug, info, warning, error, critical)")
-    args = parser.parse_args()
-
-    config = configparser.ConfigParser()
-    config_settings = parse_config(config)
-    if not config_settings or not args:
-        return
-
-    # Set up logging
-    log_level = getattr(logging, args.log.upper(), logging.INFO)
-    year_month_date = datetime.now().strftime("%Y_%m_%d")
-    logging.basicConfig(
-        level=log_level,
-		filename = 'logs/rooporter_' + year_month_date + '.log',
-        format='%(asctime)s - %(levelname)s - %(message)s',
-		datefmt='%H:%M:%S'
-    )
-    logging.info("\n-------------------------------------------------\n")
-
-
-    # register with host server
-    manager_client = ManagerClient()
-    manager_client.register_with_manager()
-
-    base_url = "https://www.cnn.com"
+def create_videos(video_type, base_url, config_settings):
     try:
+        # {headline, text, url}
         articles = scrape_homepage(base_url, config_settings["number_of_articles"])
     except Exception as e:
         logging.critical(f"Failed to scrape website - {e}")
-        manager_client.notify_task_completed()
         return
     if not articles:
         logging.critical("No articles scraped")
-        manager_client.notify_task_completed()
         return
 
     # TODO this is shit
     # generate summarized version of each article
     article_texts = [a["text"] for a in articles]
-    article_summary_prompt_info = PromptInfo(PromptInfo.article_summary,
-                                             article_texts)
-    for i, summary in enumerate(generate_text(article_summary_prompt_info,
-                                              config_settings)):
+    article_summary_prompt_info = PromptInfo(PromptInfo.article_summary, article_texts)
+    for i, summary in enumerate(generate_text(article_summary_prompt_info, config_settings)):
         articles[i]["summary"] = summary
 
+    
     # turn article summaries into audio
     try:
         articles_id_and_summary = [(article["id"], article["summary"]) for article in articles]
@@ -522,7 +486,6 @@ def main():
     except Exception as e:
         logging.critical(f"Failed to generate audio - {e}")
         logging.info(f"Article data: {articles}")
-        manager_client.notify_task_completed()
         return
 
     # generate video generation prompt for each article
@@ -535,7 +498,6 @@ def main():
     except Exception as e:
         logging.critical(f"Failed to generate video prompts - {e}")
         logging.info(f"Article data: {articles}")
-        manager_client.notify_task_completed()
         return
 
     # Generate videos. Will generate multiple <video_duration> second videos 
@@ -570,7 +532,6 @@ def main():
     except Exception as e:
         logging.critical(f"Failed to generate videos - {e}")
         logging.info(f"Video generation data: {video_generation_data}")
-        manager_client.notify_task_completed()
         return
 
     # TODO add fade between each grouping of videos
@@ -585,17 +546,56 @@ def main():
     except Exception as e:
         logging.critical(f"Failed to process videos and audio - {e}")
         logging.info(f"Audio and video files: {audio_to_video_files}")
-        manager_client.notify_task_completed()
         return
 
-	# TODO use https://github.com/makiisthenes/TiktokAutoUploader to copy youtube video to tiktok
-    title = f"NEWS {date_string_mdy()}"
+    summaries_concatinated = [" ".join(a["summary"] for a in articles)]
+    article_to_title_prompt_info = PromptInfo(PromptInfo.article_to_title, summaries_concatinated)
+    generated_title = generate_text(article_to_title_prompt_info, config_settings)
+    # max title length for youtube is 100 chars
+    generated_title_cut = generated_title[0][:75]
+    # TODO use https://github.com/makiisthenes/TiktokAutoUploader to copy youtube video to tiktok
+    title = f"{video_type} News - {generated_title_cut}"
     try:
         upload_to_youtube("tmp/"+output_file_name+".mp4", title)
     except Exception as e:
         logging.critical(f"Failed to upload to youtube - {e}")
-        manager_client.notify_task_completed()
         return
+
+def main():
+    # TODO args cannot be used because they are picked up by the hunyuan video parser, and then an error will occur complaining about unrecognized args
+    parser = argparse.ArgumentParser(description="Scrape news stories from CNN")
+    parser.add_argument('--log', type=str, default='info', help="Log level (debug, info, warning, error, critical)")
+    args = parser.parse_args()
+
+    config = configparser.ConfigParser()
+    config_settings = parse_config(config)
+    if not config_settings or not args:
+        logging.crital("Config or args error")
+        return
+
+    # Set up logging
+    log_level = getattr(logging, args.log.upper(), logging.INFO)
+    year_month_date = datetime.now().strftime("%Y_%m_%d")
+    logging.basicConfig(
+        level=log_level,
+		filename = 'logs/rooporter_' + year_month_date + '.log',
+        format='%(asctime)s - %(levelname)s - %(message)s',
+		datefmt='%H:%M:%S'
+    )
+    logging.info("\n-------------------------------------------------\n")
+
+
+    # register with host server
+    manager_client = ManagerClient()
+    manager_client.register_with_manager()
+
+    urls_to_make_videos_from = [["US", "https://www.cnn.com/us"],
+                                ["World", "https://www.cnn.com/world"],
+                                ["Politics", "https://www.cnn.com/politics"],
+                                ["Sports", "https://www.cnn.com/sport"],
+                                ["Entertainment", "https://www.cnn.com/entertainment"]]
+    for video_type, base_url in urls_to_make_videos_from:
+        create_videos(video_type, base_url, config_settings)
 
     # TODO add cleanup for logs and finished video files
     manager_client.notify_task_completed()
