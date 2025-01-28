@@ -262,7 +262,7 @@ def generate_audio(input_data, pool_size):
     with Pool(processes=pool_size) as pool:
         pool.map(tts, input_data)
 
-def parse_article(article_url):
+def parse_cnn_article(article_url):
     logging.info("Parsing article")
     # Fetch the article
     article_response = requests.get(article_url)
@@ -294,19 +294,19 @@ def parse_article(article_url):
 
     return article
 
-def scrape_homepage(base_url, limit=5):
+def scrape_cnn_homepage(url, limit):
     """
     Scrape headlines and articles from CNN.
     
     Args:
-        base_url (str): The base URL of CNN.
+        url (str): The base URL of CNN.
         limit (int): Number of articles to fetch.
 
     Returns:
         list of dict: List containing headline, article text, and URL.
     """
-    logging.info(f"Scrape {base_url}")
-    response = requests.get(base_url)
+    logging.info(f"Scrape {url}")
+    response = requests.get(url)
     
     if response.status_code != 200:
         logging.error(f"Failed to retrieve CNN homepage. Status code: {response.status_code}")
@@ -326,10 +326,11 @@ def scrape_homepage(base_url, limit=5):
             continue
         else:
             seen_hrefs.add(href)
+            base_url = "https://www.cnn.com"
             article_url = base_url + href
 
         try:
-            article_data = parse_article(article_url)
+            article_data = parse_cnn_article(article_url)
             if article_data:
                 articles.append(article_data)
                 articles[-1]["id"] = article_id 
@@ -460,10 +461,10 @@ class ManagerClient:
         except Exception as e:
             logging.error(f"Failed to notify manager: {e}")
 
-def create_videos(video_type, base_url, config_settings):
+def create_videos(video_type, url, config_settings):
     try:
         # {headline, text, url}
-        articles = scrape_homepage(base_url, config_settings["number_of_articles"])
+        articles = scrape_cnn_homepage(url, config_settings["number_of_articles"])
     except Exception as e:
         logging.critical(f"Failed to scrape website - {e}")
         return
@@ -594,8 +595,8 @@ def main():
                                 ["Politics", "https://www.cnn.com/politics"],
                                 ["Sports", "https://www.cnn.com/sport"],
                                 ["Entertainment", "https://www.cnn.com/entertainment"]]
-    for video_type, base_url in urls_to_make_videos_from:
-        create_videos(video_type, base_url, config_settings)
+    for video_type, url in urls_to_make_videos_from:
+        create_videos(video_type, url, config_settings)
 
     # TODO add cleanup for logs and finished video files
     manager_client.notify_task_completed()
