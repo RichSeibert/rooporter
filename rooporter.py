@@ -6,7 +6,6 @@ from pathlib import Path
 import subprocess
 import os
 import time
-from multiprocessing import set_start_method, Pool
 import wave
 import math
 import random
@@ -22,98 +21,9 @@ from googleapiclient.http import MediaFileUpload
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
 
-# TODO this is shit, shouldn't have to modify the path for melo and hunyuan, but setup.py doesn't work
-import sys
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), 'MeloTTS')))
-from melo.api import TTS
-
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), 'HunyuanVideo')))
-from hyvideo.utils.file_utils import save_videos_grid
-from hyvideo.config import parse_args as hy_parse_args
-from hyvideo.inference import HunyuanVideoSampler
-
-
-class PromptInfo:
-    article_summary = "article_summary"
-    video_prompt = "video_prompt"
-    article_to_title = "article_to_title"
-    def __init__(self, prompt_type, prompt_data):
-        self.prompts = prompt_data
-        if prompt_type == self.article_summary:
-            self.system_prompt = "Summarize the input article into 1 sentence. You cannot write anything except for the article summary. Do not write something like 'Here is a summary of the article:', you can only write the summary."
-            self.prompt_type = self.article_summary
-        elif prompt_type == self.video_prompt:
-            self.system_prompt = "Write a short, simple, descriptive, and funny 2 sentence scene of following article. Only describe the visuals of the scene. Do not write anything except for the prompt. Do not include the time duration of the video. Here is an example prompt: 'A stylish woman walks down a Tokyo street filled with warm glowing neon and animated city signage. She wears a black leather jacket, a long red dress, and black boots, and carries a black purse. She wears sunglasses and red lipstick. She walks confidently and casually. The street is damp and reflective, creating a mirror effect of the colorful lights. Many pedestrians walk about.'"
-            self.prompt_type = self.video_prompt
-        elif prompt_type == self.article_to_title:
-            self.system_prompt = "Summarize the input article into a 5-10 word title. It must be 70 characters or less."
-            self.prompt_type = self.article_to_title
-
-def generate_videos(audio_id_to_videos_generation_data):
-    logging.info("Generating videos")
-    # have to change dir, some of the hunyuan scripts have hardcoded paths that expect the cwd to be HunyuanVideo
-    os.chdir("HunyuanVideo")
-    models_root_path = Path("./ckpts")
-    if not models_root_path.exists():
-        logging.critical(f"Model directory `./ckpts` not found")
-        raise Exception("./ckpts dir not found in HunyuanVideo directory")
-
-    args = hy_parse_args() 
-    args.video_size = (960, 544)
-    # determine video length from length of voiceover. Framerate is 24
-    args.fps = 24
-    args.infer_steps = 30
-    args.use_cpu_offload = True
-    args.embedded_cfg_scale = 6.0
-    args.flow_shift = 7.0
-    args.flow_reverse = True
-    args.dit_weight = "ckpts/hunyuan-video-t2v-720p/transformers/mp_rank_00_model_states_fp8.pt"
-    args.use_fp8 = True
-
-    # Load models
-    hunyuan_video_sampler = HunyuanVideoSampler.from_pretrained(models_root_path, args=args)
-    # Get the updated args
-    args = hunyuan_video_sampler.args
-
-    audio_to_video_files = {}
-    for audio_id, videos_to_generate_data in audio_id_to_videos_generation_data.items():
-        audio_to_video_files[audio_id] = []
-        for sub_id, video_data in enumerate(videos_to_generate_data):
-            args.prompt = video_data["prompt"]
-            args.video_length = (video_data["duration"] * args.fps) + 1
-            args.seed = random.randint(1,999999)
-            logging.info(f"Generate video with prompt - {args.prompt}, and duration - {video_data['duration']} ")
-            try:
-                # Start sampling
-                outputs = hunyuan_video_sampler.predict(
-                    prompt=args.prompt,
-                    height=args.video_size[0],
-                    width=args.video_size[1],
-                    video_length=args.video_length,
-                    seed=args.seed,
-                    negative_prompt=args.neg_prompt,
-                    infer_steps=args.infer_steps,
-                    guidance_scale=args.cfg_scale,
-                    num_videos_per_prompt=args.num_videos,
-                    flow_shift=args.flow_shift,
-                    batch_size=args.batch_size,
-                    embedded_guidance_scale=args.embedded_cfg_scale
-                )
-                samples = outputs['samples']
-                # Save samples
-                if 'LOCAL_RANK' not in os.environ or int(os.environ['LOCAL_RANK']) == 0:
-                    for i, sample in enumerate(samples):
-                        sample = samples[i].unsqueeze(0)
-                        save_file_name = video_data["ttv_output_file_name"]
-                        save_path = f"../tmp/video/{save_file_name}.mp4"
-                        save_videos_grid(sample, save_path, fps=args.fps)
-                        logging.info(f'Sample save to: {save_path}')
-                audio_to_video_files[audio_id].append(audio_id + '_' + str(sub_id))
-            except Exception as e:
-                logging.error(f"Failed to generate video: {e}")
-
-    os.chdir("..")
-    return audio_to_video_files
+from ai_interfaces.hunyuan_video import generate_videos_hunyuan
+from ai_interfaces.llama_cpp import PromptInfo, generate_text
+from ai_interfaces.meloTTS import melo_tts_multithread
 
 def process_videos_and_audio(audio_video_mapping, output_file_name):
     logging.info("Processing videos and audio")
@@ -195,72 +105,6 @@ def process_videos_and_audio(audio_video_mapping, output_file_name):
     for video in intermediate_videos:
         video.unlink()
     final_list_file.unlink()
-
-def generate_text(prompt_info, settings):
-    logging.info(f"Generating text: {prompt_info.prompt_type}")
-    llamaCpp_file_path = "llama.cpp/build/bin/llama-cli"
-    model_file_path = "models/" + settings["model_file_name"]
-    cpu_threads = str(settings["cpu_threads"])
-    gpu_layers = str(settings["llama_cpp_gpu_layers"])
-    context_len = "10000"
-
-    outputs = []
-
-    full_prompt = """<|begin_of_text|><|start_header_id|>system<|end_header_id|>
-
-    Cutting Knowledge Date: December 2023
-    Today Date: 26 Jul 2024
-
-    {system_prompt}<|eot_id|><|start_header_id|>user<|end_header_id|>
-
-    {prompt}<|eot_id|><|start_header_id|>assistant<|end_header_id|>"""
-
-    # TODO use 'popen' instead of 'run' for parallization
-    for prompt in prompt_info.prompts:
-        complete_prompt = full_prompt.replace("{system_prompt}", prompt_info.system_prompt)
-        complete_prompt = complete_prompt.replace("{prompt}", prompt)
-        try:
-            result = subprocess.run(
-                [llamaCpp_file_path,
-                 "-m", model_file_path,
-                 "-t", cpu_threads,
-                 "-ngl", gpu_layers,
-                 "--temp", "0.9",
-                 "-c", context_len,
-                 "-p", complete_prompt,
-                 "-no-cnv"],
-                capture_output=True,
-                text=True
-            )
-            logging.debug(f"llama output: {result}")
-            llm_output = result.stdout.strip()
-            start_string = "assistant\n\n"
-            start_idx = llm_output.find(start_string) + len(start_string)
-            extra_ending = " [end of text]"
-            llm_output_stripped = llm_output[start_idx:-len(extra_ending)]
-            outputs.append(llm_output_stripped)
-        except Exception as e:
-            logging.error(f"Error running llama.cpp: {e}")
-            outputs.append("")
-            continue
-    return outputs
-
-def tts(data):
-    file_name, text = data
-    speed = 1.25
-    # WARN - meloTTS doesn't clean up gpu memmory. Using multiprocess fixes
-    # this and adds the benefit of parallization
-    device = 'auto' # Will automatically use GPU if available
-    model = TTS(language='EN', device=device)
-    speaker_ids = model.hps.data.spk2id
-    output_path = f"tmp/audio/{file_name}.wav"
-    model.tts_to_file(text, speaker_ids['EN-US'], output_path, speed=speed)
-
-def generate_audio(input_data, pool_size):
-    logging.info("Generating audio")
-    set_start_method("spawn", force=True)
-    with Pool(processes=pool_size) as pool:
-        pool.map(tts, input_data)
 
 def parse_cnn_article(article_url):
     logging.info("Parsing article")
@@ -425,8 +269,11 @@ def parse_config(config):
     config_settings = {}
     try:
         config.read('config.ini')
-        config_settings['tts_worker_pool_size'] = config.getint('DEFAULT', 'tts_worker_pool_size')
-        config_settings['number_of_articles'] = config.getint('DEFAULT', 'number_of_articles')
+        # modes: 0 = new kinds, 1 = old news
+        config_settings['generate_mode'] = config.get('DEFAULT', 'generate_mode')
+        if config_settings['generate_mode'] == 1:
+            config_settings['tts_worker_pool_size'] = config.getint('MELO_TTS', 'tts_worker_pool_size')
+            config_settings['number_of_articles'] = config.getint('NEWS_VIDEOS', 'number_of_articles')
         config_settings['cpu_threads'] = config.getint('LLAMACPP', 'cpu_threads')
         config_settings['llama_cpp_gpu_layers'] = config.getint('LLAMACPP', 'llama_cpp_gpu_layers')
         config_settings['model_file_name'] = config.get('LLAMACPP', 'model_file_name')
@@ -461,7 +308,16 @@ class ManagerClient:
         except Exception as e:
             logging.error(f"Failed to notify manager: {e}")
 
-def create_videos(video_type, url, config_settings):
+def create_news_videos(config_settings):
+    urls_to_make_videos_from = [["US", "https://www.cnn.com/us"],
+                                    ["World", "https://www.cnn.com/world"],
+                                    ["Politics", "https://www.cnn.com/politics"],
+                                    ["Sports", "https://www.cnn.com/sport"],
+                                    ["Entertainment", "https://www.cnn.com/entertainment"]]
+    for video_type, url in urls_to_make_videos_from:
+        create_news_video(video_type, url, config_settings)
+
+def create_news_video(video_type, url, config_settings):
     try:
         # {headline, text, url}
         articles = scrape_cnn_homepage(url, config_settings["number_of_articles"])
@@ -479,11 +335,10 @@ def create_videos(video_type, url, config_settings):
     for i, summary in enumerate(generate_text(article_summary_prompt_info, config_settings)):
         articles[i]["summary"] = summary
 
-    
     # turn article summaries into audio
     try:
         articles_id_and_summary = [(article["id"], article["summary"]) for article in articles]
-        generate_audio(articles_id_and_summary , config_settings["tts_worker_pool_size"])
+        melo_tts_multithread(articles_id_and_summary , config_settings["tts_worker_pool_size"])
     except Exception as e:
         logging.critical(f"Failed to generate audio - {e}")
         logging.info(f"Article data: {articles}")
@@ -529,7 +384,7 @@ def create_videos(video_type, url, config_settings):
             video_generation_data[id_s].append(video_data)
 
     try:
-        audio_to_video_files = generate_videos(video_generation_data)
+        audio_to_video_files = generate_videos_hunyuan(video_generation_data)
     except Exception as e:
         logging.critical(f"Failed to generate videos - {e}")
         logging.info(f"Video generation data: {video_generation_data}")
@@ -590,13 +445,11 @@ def main():
     manager_client = ManagerClient()
     manager_client.register_with_manager()
 
-    urls_to_make_videos_from = [["US", "https://www.cnn.com/us"],
-                                ["World", "https://www.cnn.com/world"],
-                                ["Politics", "https://www.cnn.com/politics"],
-                                ["Sports", "https://www.cnn.com/sport"],
-                                ["Entertainment", "https://www.cnn.com/entertainment"]]
-    for video_type, url in urls_to_make_videos_from:
-        create_videos(video_type, url, config_settings)
+    mode = config_settings["generate_mode"]
+    if mode == 0:
+        # TODO
+    elif mode == 1:
+        create_news_videos(config_settings)
 
     # TODO add cleanup for logs and finished video files
     manager_client.notify_task_completed()
