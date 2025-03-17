@@ -1,0 +1,15 @@
+prompts:
+  - videos:
+      - "Sunset over mountains"
+      - "Ocean waves crashing"
+      - "City skyline at night"
+    music: "Calm and serene instrumental with soft piano and strings"
+  - videos:
+      - "Forest in autumn"
+      - "Snow falling on a quiet village"
+    music: "Gentle acoustic guitar with ambient background"
+  - videos:
+      - "Abstract fractal patterns"
+      - "Space journey through galaxies"
+    music: "Epic orchestral with strong percussion and synth"
+

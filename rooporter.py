@@ -1,3 +1,5 @@
+#!/usr/bin/env python3.10
+
 import logging
 import argparse
 import configparser
@@ -11,6 +13,7 @@ import math
 import random
 import uuid
 import re
+import yaml
 
 import requests
 from bs4 import BeautifulSoup
@@ -21,9 +24,7 @@ from googleapiclient.http import MediaFileUpload
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
 
-from ai_interfaces.hunyuan_video import generate_videos_hunyuan
 from ai_interfaces.llama_cpp import PromptInfo, generate_text
-from ai_interfaces.meloTTS import melo_tts_multithread
 
 def process_videos_and_audio(audio_video_mapping, output_file_name):
     logging.info("Processing videos and audio")
@@ -270,10 +271,11 @@ def parse_config(config):
     try:
         config.read('config.ini')
         # modes: 0 = new kinds, 1 = old news
-        config_settings['generate_mode'] = config.get('DEFAULT', 'generate_mode')
-        if config_settings['generate_mode'] == 1:
+        config_settings['mode'] = config.get('DEFAULT', 'mode')
+        if config_settings['mode'] == 2:
             config_settings['tts_worker_pool_size'] = config.getint('MELO_TTS', 'tts_worker_pool_size')
             config_settings['number_of_articles'] = config.getint('NEWS_VIDEOS', 'number_of_articles')
+        config_settings['hf_home'] = config.getint('DEFAULT', 'hf_home')
         config_settings['cpu_threads'] = config.getint('LLAMACPP', 'cpu_threads')
         config_settings['llama_cpp_gpu_layers'] = config.getint('LLAMACPP', 'llama_cpp_gpu_layers')
         config_settings['model_file_name'] = config.get('LLAMACPP', 'model_file_name')
@@ -445,10 +447,34 @@ def main():
     manager_client = ManagerClient()
     manager_client.register_with_manager()
 
-    mode = config_settings["generate_mode"]
+    mode = config_settings["mode"]
     if mode == 0:
-        # TODO
+        import ai_interfaces.wanT2V
+        import ai_interfaces.stable_audio
+        # TODO fix this in config file, will need to be runpod dir
+        os.environ['HF_HOME'] = config_settings["hf_home"]
+        # TODO adjust pool size based on hardware limit (probably 2 is the limit)
+        with open("mode_0_config.yaml", 'r') as file:
+            config = yaml.safe_load(file)
+        # load one set of prompts from config based on day since start day
+        day_since_start = (datetime.now() - datetime(2025, 3, 17)).days
+        prompts_today = config["prompts"][day_since_start]
+        wan_multithread(prompts_today["videos"])
+
+        audio_parameters = [{
+            "prompt": f"{prompts_today[music]}",
+            "seconds_start": 0, 
+            "seconds_total": 15
+        }]
+        generate_audio(audio_parameters)
+        # combine videos, add audio
+        # upload to yt, tiktok, and instagram
     elif mode == 1:
+        # TODO quote videos
+        exit()
+    elif mode == 2:
+        import ai_interfaces.hunyuan_video
+        import ai_interfaces.meloTTS
         create_news_videos(config_settings)
 
     # TODO add cleanup for logs and finished video files

@@ -1,8 +1,27 @@
 #!/bin/bash
 
 # TODO figure out how to save off installed packages from apt/dnf into workspace dir so they are not deleted when the instance is terminated
+
+MODE=-1
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        -m|--mode)
+            MODE=$2
+            shift 2
+            ;;
+        --dev)
+            DEV_MODE=true
+            shift
+            ;;
+        *)
+            echo "Unknown argument: $1"
+            exit 1
+            ;;
+    esac
+done
+
 source /etc/os-release
-if [ "$1" == "--dev" ]; then
+if [ "$DEV_MODE" == true  ]; then
     echo "Dev mode, installing extra packages for debug"
     # TODO this check is broken, just check if this dir exists
     if [ $ID_LIKE == "fedora" ]; then
@@ -46,6 +65,7 @@ if [ ! -d ".venv" ]; then
     pip install -r requirements.txt
     pip install torch
     pip install flash-attn
+    pip install "huggingface_hub[cli]"
     python setup.py
 else
     echo ".venv exists, only running setup.py"
@@ -78,27 +98,43 @@ if [ ! -L "models" ]; then
     ln -s ../models models
 fi
 
-if [ ! -d "MeloTTS" ]; then
-    echo "Creating MeloTTS"
-    git clone https://github.com/myshell-ai/MeloTTS.git
-    cd MeloTTS
-    pip install -e .
-    python -m unidic download
-    cd ..
-fi
-
-if [ ! -d "HunyuanVideo" ]; then
-    echo "Creating HunyuanVideo"
-    git clone https://github.com/Tencent/HunyuanVideo.git
-    cd HunyuanVideo
+if [ "$MODE" == "0" ] || [ "$MODE" == "1" ]; then
+    echo "Setting up Wan2.1, Stable-Audio, and Kokoro-82M for mode $MODE"
+    git clone https://github.com/Wan-Video/Wan2.1.git
+    cd Wan2.1
     pip install -r requirements.txt
-    huggingface-cli download tencent/HunyuanVideo hunyuan-video-t2v-720p/transformers/mp_rank_00_model_states_fp8.pt hunyuan-video-t2v-720p/transformers/mp_rank_00_model_states_fp8_map.pt --local-dir ckpts
-    cd ckpts
-    huggingface-cli download xtuner/llava-llama-3-8b-v1_1-transformers --local-dir ./llava-llama-3-8b-v1_1-transformers
     cd ..
-    python hyvideo/utils/preprocess_text_encoder_tokenizer_utils.py --input_dir ckpts/llava-llama-3-8b-v1_1-transformers --output_dir ckpts/text_encoder
-    cd ckpts
-    huggingface-cli download openai/clip-vit-large-patch14 --local-dir ./text_encoder_2
-    cd ..
+    huggingface-cli download Wan-AI/Wan2.1-T2V-14B --local-dir ./Wan2.1-T2V-14B
+
+    pip install -q kokoro>=0.8.2 soundfile
+    apt-get -qq -y install espeak-ng > /dev/null 2>&1
+    #huggingface-cli download stabilityai/stable-audio-open-1.0 --local-dir ../models
+
+    pip install stable-audio-tools
+    #huggingface-cli download hexgrad/Kokoro-82M --local-dir ../models
+elif [ "$MODE" == "2" ]; then
+    echo "Setting up Hunyuan and MeloTTS for mode 2"
+    if [ ! -d "HunyuanVideo" ]; then
+        echo "Creating HunyuanVideo"
+        git clone https://github.com/Tencent/HunyuanVideo.git
+        cd HunyuanVideo
+        pip install -r requirements.txt
+        huggingface-cli download tencent/HunyuanVideo hunyuan-video-t2v-720p/transformers/mp_rank_00_model_states_fp8.pt hunyuan-video-t2v-720p/transformers/mp_rank_00_model_states_fp8_map.pt --local-dir ckpts
+        cd ckpts
+        huggingface-cli download xtuner/llava-llama-3-8b-v1_1-transformers --local-dir ./llava-llama-3-8b-v1_1-transformers
+        cd ..
+        python hyvideo/utils/preprocess_text_encoder_tokenizer_utils.py --input_dir ckpts/llava-llama-3-8b-v1_1-transformers --output_dir ckpts/text_encoder
+        cd ckpts
+        huggingface-cli download openai/clip-vit-large-patch14 --local-dir ./text_encoder_2
+        cd ..
+    fi
+    if [ ! -d "MeloTTS" ]; then
+        echo "Creating MeloTTS"
+        git clone https://github.com/myshell-ai/MeloTTS.git
+        cd MeloTTS
+        pip install -e .
+        python -m unidic download
+        cd ..
+    fi
 fi
 

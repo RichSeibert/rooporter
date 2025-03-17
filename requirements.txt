@@ -6,4 +6,5 @@ google-api-python-client
 #torch
 torchvision
 #flash-attn
-nltk
+#nltk
+pyyaml

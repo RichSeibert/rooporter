@@ -1,6 +1,8 @@
-# TODO this is shit, shouldn't have to modify the path for melo and hunyuan, but setup.py doesn't work
 import sys
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), 'HunyuanVideo')))
+import os
+# TODO this is shit, shouldn't have to modify the path for melo and hunyuan, but setup.py doesn't work
+base_dir = os.path.join(os.path.dirname(__file__), "..")
+sys.path.insert(0, os.path.abspath(os.path.join(base_dir, 'HunyuanVideo')))
 from hyvideo.utils.file_utils import save_videos_grid
 from hyvideo.config import parse_args as hy_parse_args
 from hyvideo.inference import HunyuanVideoSampler
