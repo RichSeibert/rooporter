@@ -19,6 +19,10 @@ while [[ $# -gt 0 ]]; do
             ;;
     esac
 done
+if [ "$MODE" == "-1" ]; then
+    echo "You must specify mode (-m, --mode)"
+    exit 1
+fi
 
 source /etc/os-release
 if [ "$DEV_MODE" == true  ]; then

@@ -7,7 +7,7 @@ def run_wan_script(prompt_with_id):
         '--task', 't2v-14B',
         '--size', '1280*720',
         '--ckpt_dir', './Wan2.1-T2V-14B',
-        '--save_file', f'{prompt_with_id[0]}.mp4',
+        '--save_file', f'/workspace/rooporter/tmp/videos/{prompt_with_id[0]}.mp4',
         '--fps', '24',
         '--frame_num', '120',
         '--prompt', prompt_with_id[1]
