@@ -25,6 +25,7 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
 
 from ai_interfaces.llama_cpp import PromptInfo, generate_text
+from ai_interfaces.stable_audio import generate_audio
 
 def process_videos_and_audio(audio_video_mapping, output_file_name):
     logging.info("Processing videos and audio")
@@ -311,6 +312,8 @@ class ManagerClient:
             logging.error(f"Failed to notify manager: {e}")
 
 def create_news_videos(config_settings):
+    import ai_interfaces.hunyuan_video
+    import ai_interfaces.meloTTS
     urls_to_make_videos_from = [["US", "https://www.cnn.com/us"],
                                     ["World", "https://www.cnn.com/world"],
                                     ["Politics", "https://www.cnn.com/politics"],
@@ -407,14 +410,63 @@ def create_news_video(video_type, url, config_settings):
         return
 
     summaries_concatinated = [" ".join(a["summary"] for a in articles)]
-    article_to_title_prompt_info = PromptInfo(PromptInfo.article_to_title, summaries_concatinated)
-    generated_title = generate_text(article_to_title_prompt_info, config_settings)
+    title_prompt_info = PromptInfo(PromptInfo.make_title, summaries_concatinated)
+    generated_title = generate_text(title_prompt_info, config_settings)
     # max title length for youtube is 100 chars
     generated_title_cut = generated_title[0][:75]
     # TODO use https://github.com/makiisthenes/TiktokAutoUploader to copy youtube video to tiktok
     title = f"{video_type} News - {generated_title_cut}"
     try:
         upload_to_youtube("tmp/"+output_file_name+".mp4", title)
+    except Exception as e:
+        logging.critical(f"Failed to upload to youtube - {e}")
+        return
+
+def create_topic_based_videos(config_settings):
+    import ai_interfaces.wanT2V
+    import ai_interfaces.stable_audio
+
+    # generate videos
+    # TODO fix this in config file, will need to be runpod dir
+    os.environ['HF_HOME'] = config_settings["hf_home"]
+    # TODO adjust pool size based on hardware limit (probably 2 is the limit)
+    # TODO change save file path based on runpod location to tmp dir
+    with open("mode_0_config.yaml", 'r') as file:
+        config = yaml.safe_load(file)
+    # load one set of prompts from config based on day since start day
+    day_since_start = (datetime.now() - datetime(2025, 3, 17)).days
+    prompts_today = config["prompts"][day_since_start]
+    wan_multithread(prompts_today["videos"])
+
+    # generate audio
+    audio_parameters = [{
+        "prompt": f"{prompts_today[music]}",
+        "seconds_start": 0, 
+        "seconds_total": 15
+    }]
+    generate_audio(audio_parameters)
+
+    # combine videos, add audio
+    time_stamp = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
+    output_file_name = f"finished_video_{time_stamp}"
+    audio_to_video_files = {"0": ["0_0", "0_1", "0_2"]}
+    try:
+        process_videos_and_audio(audio_to_video_files, output_file_name)
+    except Exception as e:
+        logging.critical(f"Failed to process videos and audio - {e}")
+        logging.info(f"Audio and video files: {audio_to_video_files}")
+        return
+
+    # upload to yt, tiktok, and instagram
+    # TODO tiktok, instagram
+    summaries_concatinated = [" ".join(p for p in prompts_today["videos"])]
+    title_prompt_info = PromptInfo(PromptInfo.make_title, summaries_concatinated)
+    generated_title = generate_text(title_prompt_info, config_settings)
+    # max title length for youtube is 100 chars
+    generated_title_cut = generated_title[0][:99]
+    # TODO use https://github.com/makiisthenes/TiktokAutoUploader to copy youtube video to tiktok
+    try:
+        upload_to_youtube("tmp/"+output_file_name+".mp4", generated_title_cut)
     except Exception as e:
         logging.critical(f"Failed to upload to youtube - {e}")
         return
@@ -449,32 +501,11 @@ def main():
 
     mode = config_settings["mode"]
     if mode == 0:
-        import ai_interfaces.wanT2V
-        import ai_interfaces.stable_audio
-        # TODO fix this in config file, will need to be runpod dir
-        os.environ['HF_HOME'] = config_settings["hf_home"]
-        # TODO adjust pool size based on hardware limit (probably 2 is the limit)
-        with open("mode_0_config.yaml", 'r') as file:
-            config = yaml.safe_load(file)
-        # load one set of prompts from config based on day since start day
-        day_since_start = (datetime.now() - datetime(2025, 3, 17)).days
-        prompts_today = config["prompts"][day_since_start]
-        wan_multithread(prompts_today["videos"])
-
-        audio_parameters = [{
-            "prompt": f"{prompts_today[music]}",
-            "seconds_start": 0, 
-            "seconds_total": 15
-        }]
-        generate_audio(audio_parameters)
-        # combine videos, add audio
-        # upload to yt, tiktok, and instagram
+        create_topic_based_videos(config_settings)
     elif mode == 1:
         # TODO quote videos
         exit()
     elif mode == 2:
-        import ai_interfaces.hunyuan_video
-        import ai_interfaces.meloTTS
         create_news_videos(config_settings)
 
     # TODO add cleanup for logs and finished video files

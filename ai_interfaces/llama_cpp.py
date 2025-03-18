@@ -3,7 +3,7 @@ import subprocess
 class PromptInfo:
     article_summary = "article_summary"
     video_prompt = "video_prompt"
-    article_to_title = "article_to_title"
+    make_title = "make_title"
     def __init__(self, prompt_type, prompt_data):
         self.prompts = prompt_data
         if prompt_type == self.article_summary:
@@ -12,9 +12,9 @@ class PromptInfo:
         elif prompt_type == self.video_prompt:
             self.system_prompt = "Write a short, simple, descriptive, and funny 2 sentence scene of following article. Only describe the visuals of the scene. Do not write anything except for the prompt. Do not include the time duration of the video. Here is an example prompt: 'A stylish woman walks down a Tokyo street filled with warm glowing neon and animated city signage. She wears a black leather jacket, a long red dress, and black boots, and carries a black purse. She wears sunglasses and red lipstick. She walks confidently and casually. The street is damp and reflective, creating a mirror effect of the colorful lights. Many pedestrians walk about.'"
             self.prompt_type = self.video_prompt
-        elif prompt_type == self.article_to_title:
-            self.system_prompt = "Summarize the input article into a 5-10 word title. It must be 70 characters or less."
-            self.prompt_type = self.article_to_title
+        elif prompt_type == self.make_title:
+            self.system_prompt = "Summarize the input into a 5-10 word title for a youtube video. It must be 70 characters or less."
+            self.prompt_type = self.make_title
 
 def generate_text(prompt_info, settings):
     logging.info(f"Generating text: {prompt_info.prompt_type}")
