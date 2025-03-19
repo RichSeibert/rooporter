@@ -433,9 +433,11 @@ def create_topic_based_videos(config_settings):
     # load one set of prompts from config based on day since start day
     day_since_start = (datetime.now() - datetime(2025, 3, 17)).days
     prompts_today = config["prompts"][day_since_start]
+    logging.info(f"Generating videos and audio using the following prompts: {prompts_today}")
+    logging.info("Generating videos")
     wan_multithread(prompts_today["videos"])
 
-    # generate audio
+    logging.info("Generating audio")
     audio_parameters = [{
         "prompt": f"{prompts_today['music']}",
         "seconds_start": 0, 
@@ -443,7 +445,6 @@ def create_topic_based_videos(config_settings):
     }]
     generate_audio(audio_parameters)
 
-    # combine videos, add audio
     time_stamp = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
     output_file_name = f"finished_video_{time_stamp}"
     audio_to_video_files = {"0": ["0_0", "0_1", "0_2"]}
