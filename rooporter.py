@@ -437,7 +437,7 @@ def create_topic_based_videos(config_settings):
 
     # generate audio
     audio_parameters = [{
-        "prompt": f"{prompts_today[music]}",
+        "prompt": f"{prompts_today['music']}",
         "seconds_start": 0, 
         "seconds_total": 15
     }]
