@@ -274,7 +274,7 @@ def parse_config(config):
         if config_settings['mode'] == 2:
             config_settings['tts_worker_pool_size'] = config.getint('MELO_TTS', 'tts_worker_pool_size')
             config_settings['number_of_articles'] = config.getint('NEWS_VIDEOS', 'number_of_articles')
-        config_settings['hf_home'] = config.getint('DEFAULT', 'hf_home')
+        config_settings['hf_home'] = config.get('DEFAULT', 'hf_home')
         config_settings['cpu_threads'] = config.getint('LLAMACPP', 'cpu_threads')
         config_settings['llama_cpp_gpu_layers'] = config.getint('LLAMACPP', 'llama_cpp_gpu_layers')
         config_settings['model_file_name'] = config.get('LLAMACPP', 'model_file_name')
@@ -425,7 +425,6 @@ def create_topic_based_videos(config_settings):
     import ai_interfaces.stable_audio
 
     # generate videos
-    # TODO fix this in config file, will need to be runpod dir
     os.environ['HF_HOME'] = config_settings["hf_home"]
     # TODO adjust pool size based on hardware limit (probably 2 is the limit)
     # TODO change save file path based on runpod location to tmp dir
