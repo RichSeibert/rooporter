@@ -25,7 +25,6 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
 
 from ai_interfaces.llama_cpp import PromptInfo, generate_text
-from ai_interfaces.stable_audio import generate_audio
 
 def process_videos_and_audio(audio_video_mapping, output_file_name):
     logging.info("Processing videos and audio")
@@ -271,7 +270,6 @@ def parse_config(config):
     config_settings = {}
     try:
         config.read('config.ini')
-        # modes: 0 = new kinds, 1 = old news
         config_settings['mode'] = config.get('DEFAULT', 'mode')
         if config_settings['mode'] == 2:
             config_settings['tts_worker_pool_size'] = config.getint('MELO_TTS', 'tts_worker_pool_size')
@@ -471,6 +469,14 @@ def create_topic_based_videos(config_settings):
         logging.critical(f"Failed to upload to youtube - {e}")
         return
 
+def create_quote_based_videos(config_settings):
+    import ai_interfaces.wanT2V
+    import ai_interfaces.stable_audio
+    import ai_interfaces.kokoro_tts
+
+    logging.critical("Not implemented")
+    return
+
 def main():
     # TODO args cannot be used because they are picked up by the hunyuan video parser, and then an error will occur complaining about unrecognized args
     parser = argparse.ArgumentParser(description="Scrape news stories from CNN")
@@ -480,7 +486,7 @@ def main():
     config = configparser.ConfigParser()
     config_settings = parse_config(config)
     if not config_settings or not args:
-        logging.crital("Config or args error")
+        logging.critical("Config or args error")
         return
 
     # Set up logging
@@ -503,8 +509,7 @@ def main():
     if mode == 0:
         create_topic_based_videos(config_settings)
     elif mode == 1:
-        # TODO quote videos
-        exit()
+        create_quote_based_videos(config_settings)
     elif mode == 2:
         create_news_videos(config_settings)
 
