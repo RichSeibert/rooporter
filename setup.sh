@@ -43,7 +43,7 @@ else
     else
         apt update
         apt upgrade -y
-        apt install ffmpeg git -y
+        apt install ffmpeg git cmake g++ -y
         apt install --upgrade python3.10-venv -y
     fi
 fi
