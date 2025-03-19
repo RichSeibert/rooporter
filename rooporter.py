@@ -270,7 +270,7 @@ def parse_config(config):
     config_settings = {}
     try:
         config.read('config.ini')
-        config_settings['mode'] = config.get('DEFAULT', 'mode')
+        config_settings['mode'] = config.getint('DEFAULT', 'mode')
         if config_settings['mode'] == 2:
             config_settings['tts_worker_pool_size'] = config.getint('MELO_TTS', 'tts_worker_pool_size')
             config_settings['number_of_articles'] = config.getint('NEWS_VIDEOS', 'number_of_articles')
@@ -421,8 +421,8 @@ def create_news_video(video_type, url, config_settings):
         return
 
 def create_topic_based_videos(config_settings):
-    import ai_interfaces.wanT2V
-    import ai_interfaces.stable_audio
+    from ai_interfaces.wanT2V import wan_multithread
+    from ai_interfaces.stable_audio import generate_audio
 
     # generate videos
     os.environ['HF_HOME'] = config_settings["hf_home"]
@@ -469,9 +469,9 @@ def create_topic_based_videos(config_settings):
         return
 
 def create_quote_based_videos(config_settings):
-    import ai_interfaces.wanT2V
-    import ai_interfaces.stable_audio
-    import ai_interfaces.kokoro_tts
+    from ai_interfaces.wanT2V import wan_multithread
+    from ai_interfaces.stable_audio import generate_audio
+    from ai_interfaces.kokoro_tts import text_to_speech
 
     logging.critical("Not implemented")
     return
