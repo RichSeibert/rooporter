@@ -12,15 +12,8 @@ def run_wan_script(prompt_with_id):
         '--frame_num', '80',
         '--prompt', prompt_with_id[1]
     ]
-    result = subprocess.run(command, capture_output=True, text=True)
-    return result.stdout, result.stderr
+    result = subprocess.run(command, text=True)
 
 def wan_multithread(prompts):
-    with multiprocessing.Pool(processes=2) as pool:
+    with multiprocessing.Pool(processes=1) as pool:
         results = pool.map(run_wan_script, [[i, prompt] for i, prompt in enumerate(prompts)])
-
-    for stdout, stderr in results:
-        if stdout:
-            print("Output:", stdout)
-        if stderr:
-            print("Error:", stderr)

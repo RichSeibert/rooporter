@@ -70,6 +70,9 @@ if [ ! -d ".venv" ]; then
     pip install torch
     pip install flash-attn
     pip install "huggingface_hub[cli]"
+    pip install -q kokoro>=0.8.2 soundfile
+    pip install stable-audio-tools
+    apt-get -qq -y install espeak-ng > /dev/null 2>&1
     python setup.py
 else
     echo ".venv exists, only running setup.py"
@@ -104,17 +107,17 @@ fi
 
 if [ "$MODE" == "0" ] || [ "$MODE" == "1" ]; then
     echo "Setting up Wan2.1, Stable-Audio, and Kokoro-82M for mode $MODE"
-    git clone https://github.com/Wan-Video/Wan2.1.git
-    cd Wan2.1
-    pip install -r requirements.txt
-    cd ..
-    huggingface-cli download Wan-AI/Wan2.1-T2V-14B --local-dir ./Wan2.1-T2V-14B
-
-    pip install -q kokoro>=0.8.2 soundfile
-    apt-get -qq -y install espeak-ng > /dev/null 2>&1
+    if [ ! -L "Wan2.1" ]; then
+        git clone https://github.com/Wan-Video/Wan2.1.git
+        cd Wan2.1
+        pip install -r requirements.txt
+        cd ..
+    fi
+    if [ ! -L "Wan2.1-T2V-14B" ]; then
+        huggingface-cli download Wan-AI/Wan2.1-T2V-14B --local-dir ./Wan2.1-T2V-14B
+    fi
+    # Don't think I need these
     #huggingface-cli download stabilityai/stable-audio-open-1.0 --local-dir ../models
-
-    pip install stable-audio-tools
     #huggingface-cli download hexgrad/Kokoro-82M --local-dir ../models
 elif [ "$MODE" == "2" ]; then
     echo "Setting up Hunyuan and MeloTTS for mode 2"

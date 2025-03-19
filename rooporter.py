@@ -435,7 +435,10 @@ def create_topic_based_videos(config_settings):
     prompts_today = config["prompts"][day_since_start]
     logging.info(f"Generating videos and audio using the following prompts: {prompts_today}")
     logging.info("Generating videos")
-    wan_multithread(prompts_today["videos"])
+    try:
+        wan_multithread(prompts_today["videos"])
+    except Exception as e:
+        logging.error(f"Exception while generating video: {e}")
 
     logging.info("Generating audio")
     audio_parameters = [{
@@ -443,7 +446,10 @@ def create_topic_based_videos(config_settings):
         "seconds_start": 0, 
         "seconds_total": 15
     }]
-    generate_audio(audio_parameters)
+    try:
+        generate_audio(audio_parameters)
+    except Exception as e:
+        logging.error(f"Exception while generating video: {e}")
 
     time_stamp = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
     output_file_name = f"finished_video_{time_stamp}"
