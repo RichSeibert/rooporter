@@ -1,4 +1,5 @@
 import subprocess
+import logging
 
 class PromptInfo:
     article_summary = "article_summary"

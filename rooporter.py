@@ -421,7 +421,7 @@ def create_news_video(video_type, url, config_settings):
         return
 
 def create_topic_based_videos(config_settings):
-    from ai_interfaces.wanT2V import wan_multithread
+    from ai_interfaces.diffsynth import diffsynth_wan_multithread
     from ai_interfaces.stable_audio import generate_audio
 
     # generate videos
@@ -436,7 +436,7 @@ def create_topic_based_videos(config_settings):
     logging.info(f"Generating videos and audio using the following prompts: {prompts_today}")
     logging.info("Generating videos")
     try:
-        wan_multithread(prompts_today["videos"])
+        diffsynth_wan_multithread(prompts_today["videos"])
     except Exception as e:
         logging.error(f"Exception while generating video: {e}")
 
@@ -476,7 +476,7 @@ def create_topic_based_videos(config_settings):
         return
 
 def create_quote_based_videos(config_settings):
-    from ai_interfaces.wanT2V import wan_multithread
+    from ai_interfaces.diffsynth import diffsynth_wan_multithread
     from ai_interfaces.stable_audio import generate_audio
     from ai_interfaces.kokoro_tts import text_to_speech
 
