@@ -431,7 +431,7 @@ def create_topic_based_videos(config_settings):
     with open("mode_0_config.yaml", 'r') as file:
         config = yaml.safe_load(file)
     # load one set of prompts from config based on day since start day
-    day_since_start = (datetime.now() - datetime(2025, 3, 17)).days
+    day_since_start = (datetime.now() - datetime(2025, 3, 20)).days
     prompts_today = config["prompts"][day_since_start]
     logging.info(f"Generating videos and audio using the following prompts: {prompts_today}")
     logging.info("Generating videos")

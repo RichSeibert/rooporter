@@ -1,3 +1,5 @@
+import subprocess
+import multiprocessing
 import torch
 from diffsynth import ModelManager, WanVideoPipeline, save_video, VideoData
 
