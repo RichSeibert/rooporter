@@ -8,3 +8,4 @@ torchvision
 #flash-attn
 #nltk
 pyyaml
+diffsynth
