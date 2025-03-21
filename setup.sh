@@ -114,11 +114,10 @@ if [ "$MODE" == "0" ] || [ "$MODE" == "1" ]; then
         cd ..
     fi
     if [ ! -L "Wan2.1-T2V-14B" ]; then
-        huggingface-cli download Wan-AI/Wan2.1-T2V-14B --local-dir ./Wan2.1-T2V-14B
+        huggingface-cli download Wan-AI/Wan2.1-T2V-14B --local-dir ../models/Wan2.1-T2V-14B
     fi
-    # Don't think I need these
-    #huggingface-cli download stabilityai/stable-audio-open-1.0 --local-dir ../models
-    #huggingface-cli download hexgrad/Kokoro-82M --local-dir ../models
+    #huggingface-cli download stabilityai/stable-audio-open-1.0 --local-dir ../models/stable-audio-open1.0
+    #huggingface-cli download hexgrad/Kokoro-82M --local-dir ../models/Kokoro-82M
 elif [ "$MODE" == "2" ]; then
     echo "Setting up Hunyuan and MeloTTS for mode 2"
     if [ ! -d "HunyuanVideo" ]; then

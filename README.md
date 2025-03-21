@@ -1,5 +1,10 @@
 # rooporter
 
+## TODO
+1. Load audio model from local file
+2. Move models into "models" dir, and update paths to reflect this
+3. Uncomment manager_client stuff once I get host back up and running
+
 ## Modes
 0 = Specific topic videos 
 1 = Quote videos
@@ -26,12 +31,12 @@
 5. Combine video and readover
 6. Upload to tiktok/youtube shorts
 
-## Host machine setup
+## GPU machine setup
 1. Transfer required files to instance with `transfer_files_to_runpod.sh <port> <ip>`
-2. Run `bash run.sh`. For a fresh install, it will install all required packages/files
+2. Login to huggingface-cli with "huggingface-cli login". Run `bash setup.sh`. For a fresh install, it will install all required packages/files
 3. Update `config.ini` with settings that work with instance.
 
-## GPU machine setup
+## Host machine setup
 1. Install runpodctl and setup config (instructions in `launch_runpod_instance.sh`)
 2. Setup a cronjob to run `launch_runpod_instance.sh` and `terminate_runpod_instance.sh` a few hours later (at least until I can figure out how to terminate an instance from within itself)
 
