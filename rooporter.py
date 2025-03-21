@@ -436,7 +436,8 @@ def create_topic_based_videos(config_settings):
     logging.info(f"Generating videos and audio using the following prompts: {prompts_today}")
     logging.info("Generating videos")
     try:
-        diffsynth_wan_multithread(prompts_today["videos"])
+        #diffsynth_wan_multithread(prompts_today["videos"])
+        pass
     except Exception as e:
         logging.error(f"Exception while generating video: {e}")
 
@@ -508,8 +509,8 @@ def main():
 
 
     # register with host server
-    manager_client = ManagerClient()
-    manager_client.register_with_manager()
+    #manager_client = ManagerClient()
+    #manager_client.register_with_manager()
 
     mode = config_settings["mode"]
     if mode == 0:
@@ -520,7 +521,7 @@ def main():
         create_news_videos(config_settings)
 
     # TODO add cleanup for logs and finished video files
-    manager_client.notify_task_completed()
+    #manager_client.notify_task_completed()
 
 if __name__ == "__main__":
     main()

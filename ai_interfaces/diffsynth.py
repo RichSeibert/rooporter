@@ -34,5 +34,6 @@ def diffsynth_wan(prompt_with_id):
     save_video(video, f"{prompt_with_id[0]}.mp4", fps=24, quality=5)
 
 def diffsynth_wan_multithread(prompts):
+    mp.set_start_method('spawn', force=True)
     with mp.Pool(processes=1) as pool:
         results = pool.map(diffsynth_wan, [[i, prompt] for i, prompt in enumerate(prompts)])
