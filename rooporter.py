@@ -524,7 +524,7 @@ def main():
     logging.basicConfig(
         level=log_level,
 		filename = 'logs/rooporter_' + year_month_date + '.log',
-        format='%(asctime)s - %(levelname)s - %(message)s',
+        format='%(asctime)s:%(levelname)s:%(filename):%(lineno) - %(message)s',
 		datefmt='%H:%M:%S'
     )
     logging.info("\n-------------------------------------------------\n")
