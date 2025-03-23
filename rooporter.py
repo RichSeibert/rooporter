@@ -49,7 +49,7 @@ def process_videos_and_audio(audio_video_mapping, output_file_name):
                 "ffmpeg",
                 "-y",
                 "-i", str(audio_file),
-                "-t", str(audio_duration),
+                "-t", str(audio_file_data["audio_duration"]),
                 "-c:a", "aac",
                 str(processed_audio)
             ]

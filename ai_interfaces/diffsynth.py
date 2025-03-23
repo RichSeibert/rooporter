@@ -2,20 +2,21 @@ import torch
 import torch.multiprocessing as mp
 from diffsynth import ModelManager, WanVideoPipeline, save_video, VideoData
 
-def diffsynth_wan(prompt_with_id, num_frames, fps):
+def diffsynth_wan(input_data):
+    prompt, id_, num_frames, fps = input_data
     model_manager = ModelManager(device="cpu")
     model_manager.load_models(
         [
             [
-            "Wan2.1-T2V-14B/diffusion_pytorch_model-00001-of-00006.safetensors",
-            "Wan2.1-T2V-14B/diffusion_pytorch_model-00002-of-00006.safetensors",
-            "Wan2.1-T2V-14B/diffusion_pytorch_model-00003-of-00006.safetensors",
-            "Wan2.1-T2V-14B/diffusion_pytorch_model-00004-of-00006.safetensors",
-            "Wan2.1-T2V-14B/diffusion_pytorch_model-00005-of-00006.safetensors",
-            "Wan2.1-T2V-14B/diffusion_pytorch_model-00006-of-00006.safetensors",
+            "models/Wan2.1-T2V-14B/diffusion_pytorch_model-00001-of-00006.safetensors",
+            "models/Wan2.1-T2V-14B/diffusion_pytorch_model-00002-of-00006.safetensors",
+            "models/Wan2.1-T2V-14B/diffusion_pytorch_model-00003-of-00006.safetensors",
+            "models/Wan2.1-T2V-14B/diffusion_pytorch_model-00004-of-00006.safetensors",
+            "models/Wan2.1-T2V-14B/diffusion_pytorch_model-00005-of-00006.safetensors",
+            "models/Wan2.1-T2V-14B/diffusion_pytorch_model-00006-of-00006.safetensors",
             ],
-        "Wan2.1-T2V-14B/models_t5_umt5-xxl-enc-bf16.pth",
-        "Wan2.1-T2V-14B/Wan2.1_VAE.pth",
+        "models/Wan2.1-T2V-14B/models_t5_umt5-xxl-enc-bf16.pth",
+        "models/Wan2.1-T2V-14B/Wan2.1_VAE.pth",
         ],
         torch_dtype=torch.float8_e4m3fn, # You can set `torch_dtype=torch.bfloat16` to disable FP8 quantization.
     )
@@ -24,18 +25,18 @@ def diffsynth_wan(prompt_with_id, num_frames, fps):
 
 # Text-to-video
     video = pipe(
-        prompt=prompt_with_id[1],
+        prompt=prompt,
         negative_prompt="",
         num_inference_steps=50,
         seed=0,
         num_frames=num_frames,
         tiled=True
     )
-    save_video(video, f"{0_prompt_with_id[0]}.mp4", fps=fps, quality=5)
+    save_video(video, f"0_{id_}.mp4", fps=fps, quality=5)
 
 def diffsynth_wan_multithread(prompts, num_frames, fps):
     mp.set_start_method('spawn', force=True)
-    with mp.Pool(processes=1) as pool:
-        prompt_with_ids = [[i, prompt] for i, prompt in enumerate(prompts)]
-        results = pool.map(diffsynth_wan, prompt_with_ids, num_frames, fps)
+    with mp.Pool(processes=2) as pool:
+        input_data = [[i, prompt, num_frames, fps] for i, prompt in enumerate(prompts)]
+        results = pool.map(diffsynth_wan, input_data)
 
