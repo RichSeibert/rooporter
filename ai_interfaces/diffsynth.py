@@ -3,7 +3,7 @@ import torch.multiprocessing as mp
 from diffsynth import ModelManager, WanVideoPipeline, save_video, VideoData
 
 def diffsynth_wan(input_data):
-    prompt, id_, num_frames, fps = input_data
+    id_, prompt, num_frames, fps = input_data
     model_manager = ModelManager(device="cpu")
     model_manager.load_models(
         [

@@ -2,7 +2,6 @@
 
 ## TODO
 1. Load audio model from local file (fix where hf saves it's cache, env variable not working)
-2. Move models into "models" dir, and update paths to reflect this
 3. Uncomment manager_client stuff once I get host back up and running
 
 ## Modes
