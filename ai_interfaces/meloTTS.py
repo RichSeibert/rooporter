@@ -4,7 +4,10 @@ import os
 base_dir = os.path.join(os.path.dirname(__file__), "..")
 sys.path.insert(0, os.path.abspath(os.path.join(base_dir, 'MeloTTS')))
 from melo.api import TTS
-from multiprocessing import set_start_method, Pool
+mrom multiprocessing import set_start_method, Pool
+# TODO figure out how download this to persistent storage, and how to retreive it from that location later on so it doesn't need to be redownloaded each time
+import nltk
+nltk.download('averaged_perceptron_tagger_eng')
 
 def melo_tts_multithread(input_data, pool_size):
     logging.info("Generating audio")

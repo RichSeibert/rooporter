@@ -55,9 +55,7 @@ fi
 # <command to load credentials using .my-credentials file>
 # git pull
 
-if [ ! -d "logs" ]; then
-    mkdir logs
-fi
+mkdir -p "tmp/audio" "tmp/video" "logs"
 
 if [ ! -d ".venv" ]; then
     echo "Creating python virtual env"
@@ -73,11 +71,9 @@ if [ ! -d ".venv" ]; then
     pip install -q kokoro>=0.8.2 soundfile
     pip install stable-audio-tools
     apt-get -qq -y install espeak-ng > /dev/null 2>&1
-    python setup.py
 else
-    echo ".venv exists, only running setup.py"
+    echo ".venv exists, just activate it"
     source .venv/bin/activate
-    python setup.py
 fi
 
 if [ ! -L "llama.cpp" ]; then
