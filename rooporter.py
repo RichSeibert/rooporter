@@ -384,7 +384,7 @@ def create_news_video(video_type, url, config_settings):
         num_videos = math.ceil(audio_file_durations[id_s]/video_duration)
         for sub_id in range(num_videos):
             # for the last video, make it so the combined durations of all 
-            # videos is audio_duraiton + 1
+            # videos is audio_duration + 1
             custom_duration = video_duration
             if sub_id == num_videos-1:
                 if audio_file_durations[id_s] % video_duration == 0:
@@ -460,7 +460,7 @@ def create_topic_based_videos(config_settings, hf_token):
     audio_parameters = [{
         "prompt": f"{prompts_today['music']}",
         "seconds_start": 0, 
-        "seconds_total": audio_duraiton
+        "seconds_total": audio_duration
     }]
     try:
         generate_audio(audio_parameters)
