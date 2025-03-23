@@ -36,7 +36,7 @@ def diffsynth_wan(input_data):
 
 def diffsynth_wan_multithread(prompts, num_frames, fps):
     mp.set_start_method('spawn', force=True)
-    with mp.Pool(processes=2) as pool:
+    with mp.Pool(processes=1) as pool:
         input_data = [[i, prompt, num_frames, fps] for i, prompt in enumerate(prompts)]
         results = pool.map(diffsynth_wan, input_data)
 
