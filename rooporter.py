@@ -438,7 +438,7 @@ def create_topic_based_videos(config_settings, hf_token):
     # generate videos
     os.environ['HF_HOME'] = config_settings["hf_home"]
     from huggingface_hub import login
-    login(token=hf_token])
+    login(token=hf_token)
     with open("mode_0_config.yaml", 'r') as file:
         config = yaml.safe_load(file)
     # load one set of prompts from config based on day since start day
@@ -451,7 +451,6 @@ def create_topic_based_videos(config_settings, hf_token):
     num_frames = fps * video_duration + 1
     try:
         diffsynth_wan_multithread(prompts_today["videos"], num_frames, fps)
-        pass
     except Exception as e:
         logging.error(f"Exception while generating video: {e}")
 
