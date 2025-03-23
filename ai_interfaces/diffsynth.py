@@ -2,7 +2,7 @@ import torch
 import torch.multiprocessing as mp
 from diffsynth import ModelManager, WanVideoPipeline, save_video, VideoData
 
-def diffsynth_wan(prompt_with_id):
+def diffsynth_wan(prompt_with_id, num_frames, fps):
     model_manager = ModelManager(device="cpu")
     model_manager.load_models(
         [
@@ -28,12 +28,14 @@ def diffsynth_wan(prompt_with_id):
         negative_prompt="",
         num_inference_steps=50,
         seed=0,
-        num_frames=24,
+        num_frames=num_frames,
         tiled=True
     )
-    save_video(video, f"{prompt_with_id[0]}.mp4", fps=24, quality=5)
+    save_video(video, f"{prompt_with_id[0]}.mp4", fps=fps, quality=5)
 
-def diffsynth_wan_multithread(prompts):
+def diffsynth_wan_multithread(prompts, num_frames, fps):
     mp.set_start_method('spawn', force=True)
     with mp.Pool(processes=1) as pool:
-        results = pool.map(diffsynth_wan, [[i, prompt] for i, prompt in enumerate(prompts)])
+        prompt_with_ids = [[i, prompt] for i, prompt in enumerate(prompts)]
+        results = pool.map(diffsynth_wan, prompt_with_ids, num_frames, fps)
+

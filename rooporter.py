@@ -36,13 +36,13 @@ def process_videos_and_audio(audio_video_mapping, output_file_name):
     for audio_file, video_files in audio_video_mapping.items():
         audio_file = Path(audio_path+audio_file+".wav")
         video_files = [Path(video_path+video+".mp4") for video in video_files]
-        
+
         # Check if all files exist
         for file in [audio_file] + video_files:
             if not file.exists():
                 logging.error(f"Error: File not found: {file}")
                 return False
-        
+
         # Create a temporary file list for video concatenation
         temp_list_file = Path("video_list.txt")
         with temp_list_file.open("w") as f:
@@ -362,8 +362,6 @@ def create_news_video(video_type, url, config_settings):
     audio_dir = "tmp/audio"
     audio_file_durations = get_wav_duration(audio_dir)
     video_generation_data = {}
-    # TODO new model doesn't take as much ram. Test with hunyuan cli and see
-    # if I can increase the duration. Only seems to hit 62% VRAM
     video_duration = 4
     for a in articles:
         id_s = str(a["id"])
@@ -397,7 +395,7 @@ def create_news_video(video_type, url, config_settings):
     # TODO add subtitles for narration
     time_stamp = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
     output_file_name = f"finished_video_{time_stamp}"
-    #audio_to_video_files = {"0": ["0_0", "0_1", "0_2", "0_3"], "1": ["1_0", "1_1", "1_2", "1_3"]}
+    #audio_to_video_files = {"0": {"video_files: ["0_0", "0_1", "0_2", "0_3"]}, "1": {"video_files": ["1_0", "1_1", "1_2", "1_3"]}}
     try:
         process_videos_and_audio(audio_to_video_files, output_file_name)
     except Exception as e:
@@ -426,8 +424,6 @@ def create_topic_based_videos(config_settings, hf_token):
     os.environ['HF_HOME'] = config_settings["hf_home"]
     from huggingface_hub import login
     login(token=hf_token])
-    # TODO adjust pool size based on hardware limit (probably 2 is the limit)
-    # TODO change save file path based on runpod location to tmp dir
     with open("mode_0_config.yaml", 'r') as file:
         config = yaml.safe_load(file)
     # load one set of prompts from config based on day since start day
@@ -435,17 +431,22 @@ def create_topic_based_videos(config_settings, hf_token):
     prompts_today = config["prompts"][day_since_start]
     logging.info(f"Generating videos and audio using the following prompts: {prompts_today}")
     logging.info("Generating videos")
+    fps = 24
+    video_duration = 5
+    num_frames = fps * video_duration + 1
     try:
-        #diffsynth_wan_multithread(prompts_today["videos"])
+        diffsynth_wan_multithread(prompts_today["videos"], num_frames, fps)
         pass
     except Exception as e:
         logging.error(f"Exception while generating video: {e}")
 
     logging.info("Generating audio")
+    # note - max duration of music is 47 seconds
+    music_duration = video_duration * len(prompts_today["videos"])
     audio_parameters = [{
         "prompt": f"{prompts_today['music']}",
         "seconds_start": 0, 
-        "seconds_total": 15
+        "seconds_total": audio_duraiton
     }]
     try:
         generate_audio(audio_parameters)
@@ -454,7 +455,7 @@ def create_topic_based_videos(config_settings, hf_token):
 
     time_stamp = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
     output_file_name = f"finished_video_{time_stamp}"
-    audio_to_video_files = {"0": ["0_0", "0_1", "0_2"]}
+    audio_to_video_files = {"0": {"audio_duration": audio_duration, "video_files": ["0_0", "0_1", "0_2"]}}
     try:
         process_videos_and_audio(audio_to_video_files, output_file_name)
     except Exception as e:
