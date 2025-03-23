@@ -31,7 +31,7 @@ def diffsynth_wan(prompt_with_id, num_frames, fps):
         num_frames=num_frames,
         tiled=True
     )
-    save_video(video, f"{prompt_with_id[0]}.mp4", fps=fps, quality=5)
+    save_video(video, f"{0_prompt_with_id[0]}.mp4", fps=fps, quality=5)
 
 def diffsynth_wan_multithread(prompts, num_frames, fps):
     mp.set_start_method('spawn', force=True)

@@ -450,6 +450,7 @@ def create_topic_based_videos(config_settings, hf_token):
     video_duration = 5
     num_frames = fps * video_duration + 1
     try:
+        # TODO fix filename, right now it's hardcoded to 0_X.wav
         diffsynth_wan_multithread(prompts_today["videos"], num_frames, fps)
     except Exception as e:
         logging.error(f"Exception while generating video: {e}")
@@ -463,6 +464,7 @@ def create_topic_based_videos(config_settings, hf_token):
         "seconds_total": audio_duration
     }]
     try:
+        # TODO fix filename, right now it's hardcoded to 0.wav
         generate_audio(audio_parameters)
     except Exception as e:
         logging.error(f"Exception while generating video: {e}")
