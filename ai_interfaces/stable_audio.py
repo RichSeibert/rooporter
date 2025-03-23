@@ -32,5 +32,5 @@ def generate_audio(conditioning):
 
     # Peak normalize, clip, convert to int16, and save to file
     output = output.to(torch.float32).div(torch.max(torch.abs(output))).clamp(-1, 1).mul(32767).to(torch.int16).cpu()
-    torchaudio.save("output.wav", output, sample_rate)
+    torchaudio.save("tmp/audio/output.wav", output, sample_rate)
 
