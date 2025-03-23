@@ -97,14 +97,11 @@ if [ ! -L "models" ]; then
     if [ ! -d "../models" ]; then
         mkdir ../models
     fi
-    huggingface-cli download bartowski/Llama-3.1-8B-Lexi-Uncensored-V2-GGUF Llama-3.1-8B-Lexi-Uncensored-V2-Q8_0.gguf --local-dir ../models
     ln -s ../models models
+    huggingface-cli download bartowski/Llama-3.1-8B-Lexi-Uncensored-V2-GGUF Llama-3.1-8B-Lexi-Uncensored-V2-Q8_0.gguf --local-dir ../models
     huggingface-cli download Wan-AI/Wan2.1-T2V-14B --local-dir ../models/Wan2.1-T2V-14B
-    ln -s ../Wan2.1-T2V-14B Wan2.1-T2V-14B
-    huggingface-cli download stabilityai/stable-audio-open-1.0 --local-dir ../models/stable-audio-open1.0
-    ln -s ../stable-audio-open1.0 stable-audio-open1.0
-    huggingface-cli download hexgrad/Kokoro-82M --local-dir ../models/Kokoro-82M
-    ln -s ../models/Kokoro-82M Kokoro-82M
+    #huggingface-cli download stabilityai/stable-audio-open-1.0 --local-dir ../models/stable-audio-open1.0
+    #huggingface-cli download hexgrad/Kokoro-82M --local-dir ../models/Kokoro-82M
 fi
 
 if [ "$MODE" == "0" ] || [ "$MODE" == "1" ]; then

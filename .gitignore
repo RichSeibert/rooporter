@@ -13,7 +13,8 @@ tmp
 runpod_api_key
 youtube_client_secret.json
 credentials.pkl
-token.txt
+host_token.txt
+huggingface_token.txt
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

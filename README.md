@@ -4,6 +4,7 @@
 1. Load audio model from local file
 2. Move models into "models" dir, and update paths to reflect this
 3. Uncomment manager_client stuff once I get host back up and running
+4. Make file to hold all tokens, instead of having them all in seperate files
 
 ## Modes
 0 = Specific topic videos 

@@ -291,7 +291,7 @@ class ManagerClient:
         self.worker_id = str(uuid.uuid4())
         logging.info(f"Worker ID: {self.worker_id}")
         self.manager_url = "http://ec2-54-88-53-193.compute-1.amazonaws.com:8080"
-        with open("token.txt") as file:
+        with open("host_token.txt") as file:
             token = file.read().split("\n")[0]
             self.header = {"Authorization": token}
 
@@ -426,6 +426,10 @@ def create_topic_based_videos(config_settings):
 
     # generate videos
     os.environ['HF_HOME'] = config_settings["hf_home"]
+    from huggingface_hub import login
+    with open("huggingface_token.txt") as file:
+        hf_token = file.read().split("\n")[0]
+        login(token=hf_token)
     # TODO adjust pool size based on hardware limit (probably 2 is the limit)
     # TODO change save file path based on runpod location to tmp dir
     with open("mode_0_config.yaml", 'r') as file:
