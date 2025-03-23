@@ -35,7 +35,7 @@ def generate_videos_hunyuan(audio_id_to_videos_generation_data):
 
     audio_to_video_files = {}
     for audio_id, videos_to_generate_data in audio_id_to_videos_generation_data.items():
-        audio_to_video_files[audio_id] = []
+        audio_to_video_files[audio_id] = {"video_files": []}
         for sub_id, video_data in enumerate(videos_to_generate_data):
             args.prompt = video_data["prompt"]
             args.video_length = (video_data["duration"] * args.fps) + 1
@@ -66,7 +66,7 @@ def generate_videos_hunyuan(audio_id_to_videos_generation_data):
                         save_path = f"../tmp/video/{save_file_name}.mp4"
                         save_videos_grid(sample, save_path, fps=args.fps)
                         logging.info(f'Sample save to: {save_path}')
-                audio_to_video_files[audio_id].append(audio_id + '_' + str(sub_id))
+                audio_to_video_files[audio_id]["video_files"].append(audio_id + '_' + str(sub_id))
             except Exception as e:
                 logging.error(f"Failed to generate video: {e}")
 

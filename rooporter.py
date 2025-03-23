@@ -33,15 +33,29 @@ def process_videos_and_audio(audio_video_mapping, output_file_name):
     # Process each audio and associated video files
     audio_path = "tmp/audio/"
     video_path = "tmp/video/"
-    for audio_file, video_files in audio_video_mapping.items():
-        audio_file = Path(audio_path+audio_file+".wav")
-        video_files = [Path(video_path+video+".mp4") for video in video_files]
+    for audio_file, audio_file_data in audio_video_mapping.items():
+        audio_file = Path(audio_path + audio_file + ".wav")
+        video_files = [Path(video_path + video + ".mp4") for video in audio_file_data["video_files"]]
 
         # Check if all files exist
         for file in [audio_file] + video_files:
             if not file.exists():
                 logging.error(f"Error: File not found: {file}")
                 return False
+
+        if "audio_duration" in audio_file_data:
+            processed_audio = Path(f"trimmed_{audio_file.stem}.wav")
+            trim_command = [
+                "ffmpeg",
+                "-y",
+                "-i", str(audio_file),
+                "-t", str(audio_duration),
+                "-c:a", "aac",
+                str(processed_audio)
+            ]
+            subprocess.run(trim_command, check=True)
+        else:
+            processed_audio = audio_file
 
         # Create a temporary file list for video concatenation
         temp_list_file = Path("video_list.txt")
@@ -68,7 +82,7 @@ def process_videos_and_audio(audio_video_mapping, output_file_name):
             "ffmpeg",
             "-y",
             "-i", str(combined_video),
-            "-i", str(audio_file),
+            "-i", str(processed_audio),
             "-c:v", "copy",
             "-c:a", "aac",
             "-strict", "experimental",
@@ -76,12 +90,13 @@ def process_videos_and_audio(audio_video_mapping, output_file_name):
         ]
         subprocess.run(add_audio, check=True)
 
-        # Clean up intermediate video and add to the list for final combination
-        combined_video.unlink()  # Remove intermediate combined video
-        intermediate_videos.append(audio_video_output)
-
-        # Clean up temporary list file
+        # Clean up intermediate files
+        combined_video.unlink()
+        processed_audio.unlink()
         temp_list_file.unlink()
+
+        # Add to the list for final combination
+        intermediate_videos.append(audio_video_output)
 
     # Combine all processed videos into one final output
     final_list_file = Path("final_video_list.txt")
