@@ -456,7 +456,7 @@ def create_topic_based_videos(config_settings, hf_token):
 
     logging.info("Generating audio")
     # note - max duration of music is 47 seconds
-    music_duration = video_duration * len(prompts_today["videos"])
+    audio_duration = video_duration * len(prompts_today["videos"])
     audio_parameters = [{
         "prompt": f"{prompts_today['music']}",
         "seconds_start": 0, 
@@ -531,7 +531,7 @@ def main():
 
     mode = config_settings["mode"]
     if mode == 0:
-        create_topic_based_videos(config_settings, tokens["hugging_face"])
+        create_topic_based_videos(config_settings, tokens["huggingface"])
     elif mode == 1:
         create_quote_based_videos(config_settings)
     elif mode == 2:
