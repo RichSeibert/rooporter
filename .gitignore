@@ -7,14 +7,11 @@ stable-audio-open-1.0
 hub
 
 # custom
-tokens.json
 models
 tmp
-runpod_api_key
 youtube_client_secret.json
 credentials.pkl
-host_token.txt
-huggingface_token.txt
+tokens.yaml
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

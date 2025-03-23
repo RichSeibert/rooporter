@@ -287,13 +287,11 @@ def parse_config(config):
 # should be in a standalone file so it can be ran from the command line start
 # up commands. For example, "client.py register; roobot.py; rooporter.py; client.py terminate;"
 class ManagerClient:
-    def __init__(self):
+    def __init__(self, token):
         self.worker_id = str(uuid.uuid4())
         logging.info(f"Worker ID: {self.worker_id}")
         self.manager_url = "http://ec2-54-88-53-193.compute-1.amazonaws.com:8080"
-        with open("host_token.txt") as file:
-            token = file.read().split("\n")[0]
-            self.header = {"Authorization": token}
+        self.header = {"Authorization": token}
 
     def register_with_manager(self):
         try:
@@ -420,16 +418,14 @@ def create_news_video(video_type, url, config_settings):
         logging.critical(f"Failed to upload to youtube - {e}")
         return
 
-def create_topic_based_videos(config_settings):
+def create_topic_based_videos(config_settings, hf_token):
     from ai_interfaces.diffsynth import diffsynth_wan_multithread
     from ai_interfaces.stable_audio import generate_audio
 
     # generate videos
     os.environ['HF_HOME'] = config_settings["hf_home"]
     from huggingface_hub import login
-    with open("huggingface_token.txt") as file:
-        hf_token = file.read().split("\n")[0]
-        login(token=hf_token)
+    login(token=hf_token])
     # TODO adjust pool size based on hardware limit (probably 2 is the limit)
     # TODO change save file path based on runpod location to tmp dir
     with open("mode_0_config.yaml", 'r') as file:
@@ -500,7 +496,9 @@ def main():
         logging.critical("Config or args error")
         return
 
-    # Set up logging
+    with open("tokens.yaml", "r") as file:
+        tokens = yaml.safe_load(file)
+
     log_level = getattr(logging, args.log.upper(), logging.INFO)
     year_month_date = datetime.now().strftime("%Y_%m_%d")
     logging.basicConfig(
@@ -513,12 +511,12 @@ def main():
 
 
     # register with host server
-    #manager_client = ManagerClient()
+    #manager_client = ManagerClient(tokens["big_kahuna"])
     #manager_client.register_with_manager()
 
     mode = config_settings["mode"]
     if mode == 0:
-        create_topic_based_videos(config_settings)
+        create_topic_based_videos(config_settings, tokens["hugging_face"])
     elif mode == 1:
         create_quote_based_videos(config_settings)
     elif mode == 2:
