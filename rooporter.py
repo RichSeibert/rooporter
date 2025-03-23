@@ -432,7 +432,7 @@ def create_news_video(video_type, url, config_settings):
         return
 
 def create_topic_based_videos(config_settings, hf_token):
-    from ai_interfaces.diffsynth import diffsynth_wan_multithread, diffsynth_wan_multithread
+    from ai_interfaces.diffsynth import diffsynth_wan, diffsynth_wan_multithread
     from ai_interfaces.stable_audio import generate_audio
 
     # generate videos
