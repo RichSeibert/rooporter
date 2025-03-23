@@ -497,7 +497,7 @@ def main():
         return
 
     with open("tokens.yaml", "r") as file:
-        tokens = yaml.safe_load(file)
+        tokens = yaml.safe_load(file)["tokens"]
 
     log_level = getattr(logging, args.log.upper(), logging.INFO)
     year_month_date = datetime.now().strftime("%Y_%m_%d")
