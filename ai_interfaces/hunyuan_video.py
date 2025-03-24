@@ -1,5 +1,6 @@
 import sys
 import os
+import logging
 # TODO this is shit, shouldn't have to modify the path for melo and hunyuan, but setup.py doesn't work
 base_dir = os.path.join(os.path.dirname(__file__), "..")
 sys.path.insert(0, os.path.abspath(os.path.join(base_dir, 'HunyuanVideo')))
