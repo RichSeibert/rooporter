@@ -432,7 +432,7 @@ def create_news_video(video_type, url, config_settings):
         return
 
 def create_topic_based_videos(config_settings, hf_token):
-    from ai_interfaces.diffsynth import diffsynth_wan, diffsynth_wan_multithread
+    from ai_interfaces.diffsynth import diffsynth_wan 
     from ai_interfaces.stable_audio import generate_audio
 
     # generate videos
@@ -451,7 +451,6 @@ def create_topic_based_videos(config_settings, hf_token):
     num_frames = fps * video_duration + 1
     try:
         # TODO fix filename, right now it's hardcoded to 0_X.wav
-        # diffsynth_wan_multithread(prompts_today["videos"], num_frames, fps)
         input_data = [[i, prompt, num_frames, fps] for i, prompt in enumerate(prompts_today["videos"])]
         diffsynth_wan(input_data)
     except Exception as e:
@@ -496,7 +495,7 @@ def create_topic_based_videos(config_settings, hf_token):
         return
 
 def create_quote_based_videos(config_settings):
-    from ai_interfaces.diffsynth import diffsynth_wan_multithread
+    from ai_interfaces.diffsynth import diffsynth_wan
     from ai_interfaces.stable_audio import generate_audio
     from ai_interfaces.kokoro_tts import text_to_speech
 
