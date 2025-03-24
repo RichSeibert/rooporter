@@ -432,7 +432,7 @@ def create_news_video(video_type, url, config_settings):
         return
 
 def create_topic_based_videos(config_settings, hf_token):
-    from ai_interfaces.diffsynth import diffsynth_wan 
+    from ai_interfaces.hunyuan_video import generate_videos_hunyuan
     from ai_interfaces.stable_audio import generate_audio
 
     # generate videos
@@ -449,10 +449,15 @@ def create_topic_based_videos(config_settings, hf_token):
     fps = 24
     video_duration = 5
     num_frames = fps * video_duration + 1
+    all_video_data = {0: []}
+    for i, prompt in enumerate(prompts_today["videos"]):
+        video_data = {"prompt": prompt,
+                      "duration": video_duration,
+                      "ttv_output_file_name": f"0_{str(i)}"}
+        all_video_data[0].append(video_data)
     try:
         # TODO fix filename, right now it's hardcoded to 0_X.wav
-        input_data = [[i, prompt, num_frames, fps] for i, prompt in enumerate(prompts_today["videos"])]
-        diffsynth_wan(input_data)
+        generate_videos_hunyuan(all_video_data)
     except Exception as e:
         logging.error(f"Exception while generating video: {e}")
 
@@ -495,7 +500,7 @@ def create_topic_based_videos(config_settings, hf_token):
         return
 
 def create_quote_based_videos(config_settings):
-    from ai_interfaces.diffsynth import diffsynth_wan
+    from ai_interfaces.hunyuan_video import generate_videos_hunyuan
     from ai_interfaces.stable_audio import generate_audio
     from ai_interfaces.kokoro_tts import text_to_speech
 

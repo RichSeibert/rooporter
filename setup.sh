@@ -112,22 +112,8 @@ if [ "$MODE" == "0" ] || [ "$MODE" == "1" ]; then
         pip install -r requirements.txt
         cd ..
     fi
-elif [ "$MODE" == "2" ]; then
-    echo "Setting up Hunyuan and MeloTTS for mode 2"
-    if [ ! -d "HunyuanVideo" ]; then
-        echo "Creating HunyuanVideo"
-        git clone https://github.com/Tencent/HunyuanVideo.git
-        cd HunyuanVideo
-        pip install -r requirements.txt
-        huggingface-cli download tencent/HunyuanVideo hunyuan-video-t2v-720p/transformers/mp_rank_00_model_states_fp8.pt hunyuan-video-t2v-720p/transformers/mp_rank_00_model_states_fp8_map.pt --local-dir ckpts
-        cd ckpts
-        huggingface-cli download xtuner/llava-llama-3-8b-v1_1-transformers --local-dir ./llava-llama-3-8b-v1_1-transformers
-        cd ..
-        python hyvideo/utils/preprocess_text_encoder_tokenizer_utils.py --input_dir ckpts/llava-llama-3-8b-v1_1-transformers --output_dir ckpts/text_encoder
-        cd ckpts
-        huggingface-cli download openai/clip-vit-large-patch14 --local-dir ./text_encoder_2
-        cd ..
-    fi
+fi
+if [ "$MODE" == "2" ]; then
     if [ ! -d "MeloTTS" ]; then
         echo "Creating MeloTTS"
         git clone https://github.com/myshell-ai/MeloTTS.git
@@ -137,4 +123,21 @@ elif [ "$MODE" == "2" ]; then
         cd ..
     fi
 fi
+
+echo "Setting up Hunyuan"
+if [ ! -d "HunyuanVideo" ]; then
+    echo "Creating HunyuanVideo"
+    git clone https://github.com/Tencent/HunyuanVideo.git
+    cd HunyuanVideo
+    pip install -r requirements.txt
+    huggingface-cli download tencent/HunyuanVideo hunyuan-video-t2v-720p/transformers/mp_rank_00_model_states_fp8.pt hunyuan-video-t2v-720p/transformers/mp_rank_00_model_states_fp8_map.pt --local-dir ckpts
+    cd ckpts
+    huggingface-cli download xtuner/llava-llama-3-8b-v1_1-transformers --local-dir ./llava-llama-3-8b-v1_1-transformers
+    cd ..
+    python hyvideo/utils/preprocess_text_encoder_tokenizer_utils.py --input_dir ckpts/llava-llama-3-8b-v1_1-transformers --output_dir ckpts/text_encoder
+    cd ckpts
+    huggingface-cli download openai/clip-vit-large-patch14 --local-dir ./text_encoder_2
+    cd ..
+fi
+
 
