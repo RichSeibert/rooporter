@@ -99,20 +99,11 @@ if [ ! -L "models" ]; then
     fi
     ln -s ../models models
     huggingface-cli download bartowski/Llama-3.1-8B-Lexi-Uncensored-V2-GGUF Llama-3.1-8B-Lexi-Uncensored-V2-Q8_0.gguf --local-dir ../models
-    huggingface-cli download Wan-AI/Wan2.1-T2V-14B --local-dir ../models/Wan2.1-T2V-14B
+    #huggingface-cli download Wan-AI/Wan2.1-T2V-14B --local-dir ../models/Wan2.1-T2V-14B
     #huggingface-cli download stabilityai/stable-audio-open-1.0 --local-dir ../models/stable-audio-open1.0
     #huggingface-cli download hexgrad/Kokoro-82M --local-dir ../models/Kokoro-82M
 fi
 
-if [ "$MODE" == "0" ] || [ "$MODE" == "1" ]; then
-    echo "Setting up Wan2.1, Stable-Audio, and Kokoro-82M for mode $MODE"
-    if [ ! -L "Wan2.1" ]; then
-        git clone https://github.com/Wan-Video/Wan2.1.git
-        cd Wan2.1
-        pip install -r requirements.txt
-        cd ..
-    fi
-fi
 if [ "$MODE" == "2" ]; then
     if [ ! -d "MeloTTS" ]; then
         echo "Creating MeloTTS"
