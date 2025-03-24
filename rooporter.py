@@ -453,8 +453,7 @@ def create_topic_based_videos(config_settings, hf_token):
         # TODO fix filename, right now it's hardcoded to 0_X.wav
         # diffsynth_wan_multithread(prompts_today["videos"], num_frames, fps)
         input_data = [[i, prompt, num_frames, fps] for i, prompt in enumerate(prompts_today["videos"])]
-        for inpu in input_data:
-            diffsynth_wan(inpu)
+        diffsynth_wan(input_data)
     except Exception as e:
         logging.error(f"Exception while generating video: {e}")
 
