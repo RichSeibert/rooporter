@@ -127,7 +127,7 @@ if [ ! -d "HunyuanVideo" ]; then
     transformers/mp_rank_00_model_states.pt \
     hunyuan-video-t2v-720p/transformers/mp_rank_00_model_states_fp8_map.pt \
     hunyuan-video-t2v-720p/vae/config.json \
-    hunyuan-video-t2v-720p/vae/pytorch_model.py \
+    hunyuan-video-t2v-720p/vae/pytorch_model.pt \
     --local-dir ckpts
 
     cd ckpts
