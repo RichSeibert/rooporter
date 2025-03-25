@@ -37,8 +37,7 @@
 3. Update `config.ini` with settings that work with instance.
 
 ## Host machine setup
-1. Install runpodctl and setup config (instructions in `launch_runpod_instance.sh`)
-2. Setup a cronjob to run `launch_runpod_instance.sh` and `terminate_runpod_instance.sh` a few hours later (at least until I can figure out how to terminate an instance from within itself)
+1. Setup aws instance and clone big_kahuna repo. Follow README
 
 ## Example prompt for hunyuan. video-length must be a multiple of 4 + 1
 `python sample_video.py --video-size 960 544 --video-length 129 --infer-steps 50 --prompt "President Joe Biden walks into a crowded auditorium wearing a traditional navy blue suit and a red tie, his suit jacket draped over his shoulder, a hint of a smile on his face. He steps up to the podium, adjusting the mic stand as he scans the audience with a hint of confidence." --flow-reverse --use-cpu-offload --save-path ./results`
