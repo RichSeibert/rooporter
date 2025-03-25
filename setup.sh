@@ -123,8 +123,8 @@ if [ ! -d "HunyuanVideo" ]; then
     pip install -r requirements.txt
 
     # add "_fp8" to file name for mp_rank_00_model_states.pt for fp8 model
-    huggingface-cli download tencent/HunyuanVideo hunyuan-video-t2v-720p \ 
-    transformers/mp_rank_00_model_states.pt \
+    huggingface-cli download tencent/HunyuanVideo \
+    hunyuan-video-t2v-720p/transformers/mp_rank_00_model_states.pt \
     hunyuan-video-t2v-720p/transformers/mp_rank_00_model_states_fp8_map.pt \
     hunyuan-video-t2v-720p/vae/config.json \
     hunyuan-video-t2v-720p/vae/pytorch_model.pt \
