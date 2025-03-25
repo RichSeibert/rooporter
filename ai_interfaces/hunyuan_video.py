@@ -27,7 +27,7 @@ def generate_videos_hunyuan(audio_id_to_videos_generation_data):
     args.embedded_cfg_scale = 6.0
     args.flow_shift = 7.0
     args.flow_reverse = True
-    args.dit_weight = "ckpts/hunyuan-video-t2v-720p/transformers/mp_rank_00_model_states_fp8.pt"
+    args.dit_weight = "ckpts/hunyuan-video-t2v-720p/transformers/mp_rank_00_model_states.pt"
     args.use_fp8 = True
 
     # Load models

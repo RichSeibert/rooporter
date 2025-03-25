@@ -121,7 +121,15 @@ if [ ! -d "HunyuanVideo" ]; then
     git clone https://github.com/Tencent/HunyuanVideo.git
     cd HunyuanVideo
     pip install -r requirements.txt
-    huggingface-cli download tencent/HunyuanVideo hunyuan-video-t2v-720p/transformers/mp_rank_00_model_states_fp8.pt hunyuan-video-t2v-720p/transformers/mp_rank_00_model_states_fp8_map.pt --local-dir ckpts
+
+    # add "_fp8" to file name for mp_rank_00_model_states.pt for fp8 model
+    huggingface-cli download tencent/HunyuanVideo hunyuan-video-t2v-720p \ 
+    transformers/mp_rank_00_model_states.pt \
+    hunyuan-video-t2v-720p/transformers/mp_rank_00_model_states_fp8_map.pt \
+    hunyuan-video-t2v-720p/vae/config.json \
+    hunyuan-video-t2v-720p/vae/pytorch_model.py \
+    --local-dir ckpts
+
     cd ckpts
     huggingface-cli download xtuner/llava-llama-3-8b-v1_1-transformers --local-dir ./llava-llama-3-8b-v1_1-transformers
     cd ..
