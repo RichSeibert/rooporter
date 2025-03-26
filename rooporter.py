@@ -533,8 +533,8 @@ def main():
 
 
     # register with host server
-    #manager_client = ManagerClient(tokens["big_kahuna"])
-    #manager_client.register_with_manager()
+    manager_client = ManagerClient(tokens["big_kahuna"])
+    manager_client.register_with_manager()
 
     os.environ['HF_HOME'] = config_settings["hf_home"]
     mode = config_settings["mode"]
@@ -546,7 +546,7 @@ def main():
         create_news_videos(config_settings)
 
     # TODO add cleanup for logs and finished video files
-    #manager_client.notify_task_completed()
+    manager_client.notify_task_completed()
 
 if __name__ == "__main__":
     main()
