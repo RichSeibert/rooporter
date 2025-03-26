@@ -292,6 +292,7 @@ def parse_config(config):
             config_settings['tts_worker_pool_size'] = config.getint('MELO_TTS', 'tts_worker_pool_size')
             config_settings['number_of_articles'] = config.getint('NEWS_VIDEOS', 'number_of_articles')
         config_settings['hf_home'] = config.get('DEFAULT', 'hf_home')
+        config_settings['big_kahuna_url'] = config.get('DEFAULT', 'hf_home')
         config_settings['cpu_threads'] = config.getint('LLAMACPP', 'cpu_threads')
         config_settings['llama_cpp_gpu_layers'] = config.getint('LLAMACPP', 'llama_cpp_gpu_layers')
         config_settings['model_file_name'] = config.get('LLAMACPP', 'model_file_name')
@@ -304,10 +305,10 @@ def parse_config(config):
 # should be in a standalone file so it can be ran from the command line start
 # up commands. For example, "client.py register; roobot.py; rooporter.py; client.py terminate;"
 class ManagerClient:
-    def __init__(self, token):
+    def __init__(self, token, mananger_url):
         self.worker_id = str(uuid.uuid4())
         logging.info(f"Worker ID: {self.worker_id}")
-        self.manager_url = "http://ec2-54-88-53-193.compute-1.amazonaws.com:8080"
+        self.manager_url = manager_url
         self.header = {"Authorization": token}
 
     def register_with_manager(self):
@@ -533,7 +534,7 @@ def main():
 
 
     # register with host server
-    manager_client = ManagerClient(tokens["big_kahuna"])
+    manager_client = ManagerClient(tokens["big_kahuna"], config_settings["big_kahuna_url"])
     manager_client.register_with_manager()
 
     os.environ['HF_HOME'] = config_settings["hf_home"]
