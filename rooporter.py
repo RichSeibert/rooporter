@@ -443,7 +443,7 @@ def create_topic_based_videos(config_settings, hf_token):
     with open("mode_0_config.yaml", 'r') as file:
         config = yaml.safe_load(file)
     # load one set of prompts from config based on day since start day
-    day_since_start = (datetime.now() - datetime(2025, 3, 23)).days
+    day_since_start = (datetime.now() - datetime(2025, 3, 26)).days
     prompts_today = config["prompts"][day_since_start]
     logging.info(f"Generating videos and audio using the following prompts: {prompts_today}")
     logging.info("Generating videos")
