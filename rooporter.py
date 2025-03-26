@@ -305,7 +305,7 @@ def parse_config(config):
 # should be in a standalone file so it can be ran from the command line start
 # up commands. For example, "client.py register; roobot.py; rooporter.py; client.py terminate;"
 class ManagerClient:
-    def __init__(self, token, mananger_url):
+    def __init__(self, token, manager_url):
         self.worker_id = str(uuid.uuid4())
         logging.info(f"Worker ID: {self.worker_id}")
         self.manager_url = manager_url

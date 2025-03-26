@@ -1,9 +1,6 @@
 # rooporter
 
 ## TODO
-1. Load audio model from local file (fix where hf saves it's cache, env variable not working)
-3. Uncomment manager_client stuff once I get host back up and running
-4. Redo the entire gpu instance, fucked up after wan shit
 
 ## Modes
 0 = Specific topic videos 
