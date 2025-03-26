@@ -477,7 +477,7 @@ def create_topic_based_videos(config_settings, hf_token):
 
     time_stamp = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
     output_file_name = f"finished_video_{time_stamp}"
-    audio_to_video_files = {"0": {"audio_duration": audio_duration, "video_files": ["0_0", "0_1", "0_2"]}}
+    audio_to_video_files = {"0": {"audio_duration": audio_duration, "video_files": ["0_0", "0_1", "0_2", "0_3", "0_4"]}}
     try:
         process_videos_and_audio(audio_to_video_files, output_file_name, config_settings["mode"])
     except Exception as e:
