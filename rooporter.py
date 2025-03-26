@@ -29,8 +29,6 @@ from ai_interfaces.llama_cpp import PromptInfo, generate_text
 def process_videos_and_audio(audio_video_mapping, output_file_name):
     logging.info("Processing videos and audio")
     intermediate_videos = []
-
-    # Process each audio and associated video files
     audio_path = "tmp/audio/"
     video_path = "tmp/video/"
     for audio_file, audio_file_data in audio_video_mapping.items():
@@ -42,15 +40,16 @@ def process_videos_and_audio(audio_video_mapping, output_file_name):
             if not file.exists():
                 logging.error(f"Error: File not found: {file}")
                 return False
-
+        # Trim the audio to the specified duration, outputting as M4A with a fixed bitrate
         if "audio_duration" in audio_file_data:
-            processed_audio = Path(f"trimmed_{audio_file.stem}.wav")
+            processed_audio = Path(f"trimmed_{audio_file.stem}.m4a")
             trim_command = [
                 "ffmpeg",
                 "-y",
                 "-i", str(audio_file),
                 "-t", str(audio_file_data["audio_duration"]),
                 "-c:a", "aac",
+                "-b:a", "128k",
                 str(processed_audio)
             ]
             subprocess.run(trim_command, check=True)
@@ -85,6 +84,7 @@ def process_videos_and_audio(audio_video_mapping, output_file_name):
             "-i", str(processed_audio),
             "-c:v", "copy",
             "-c:a", "aac",
+            "-b:a", "128k",
             "-strict", "experimental",
             str(audio_video_output)
         ]
@@ -92,7 +92,8 @@ def process_videos_and_audio(audio_video_mapping, output_file_name):
 
         # Clean up intermediate files
         combined_video.unlink()
-        processed_audio.unlink()
+        if "audio_duration" in audio_file_data:
+            processed_audio.unlink()
         temp_list_file.unlink()
 
         # Add to the list for final combination
