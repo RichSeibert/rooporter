@@ -4,7 +4,7 @@
 # not deleted when starting a new instance. I shouldn't need to run setup.sh 
 # every time
 echo "Run setup.sh"
-bash setup.sh
+bash setup.sh -m 0
 
 echo "Run rooporter.py"
 source .venv/bin/activate
