@@ -26,7 +26,7 @@ from google.auth.transport.requests import Request
 
 from ai_interfaces.llama_cpp import PromptInfo, generate_text
 
-def process_videos_and_audio(audio_video_mapping, output_file_name):
+def process_videos_and_audio(audio_video_mapping, output_file_name, mode):
     logging.info("Processing videos and audio")
     intermediate_videos = []
     audio_path = "tmp/audio/"
@@ -102,7 +102,8 @@ def process_videos_and_audio(audio_video_mapping, output_file_name):
     # Combine all processed videos into one final output
     final_list_file = Path("final_video_list.txt")
     with final_list_file.open("w") as f:
-        f.write("file 'intro_video/intro_video_lower_volume.mp4'\n")
+        if mode == 2:
+            f.write("file 'intro_video/intro_video_lower_volume.mp4'\n")
         for video in intermediate_videos:
             f.write(f"file '{video.resolve()}'\n")
 
@@ -413,7 +414,7 @@ def create_news_video(video_type, url, config_settings):
     output_file_name = f"finished_video_{time_stamp}"
     #audio_to_video_files = {"0": {"video_files: ["0_0", "0_1", "0_2", "0_3"]}, "1": {"video_files": ["1_0", "1_1", "1_2", "1_3"]}}
     try:
-        process_videos_and_audio(audio_to_video_files, output_file_name)
+        process_videos_and_audio(audio_to_video_files, output_file_name, config_settings["mode"])
     except Exception as e:
         logging.critical(f"Failed to process videos and audio - {e}")
         logging.info(f"Audio and video files: {audio_to_video_files}")
@@ -437,7 +438,6 @@ def create_topic_based_videos(config_settings, hf_token):
     from ai_interfaces.stable_audio import generate_audio
 
     # generate videos
-    os.environ['HF_HOME'] = config_settings["hf_home"]
     from huggingface_hub import login
     login(token=hf_token)
     with open("mode_0_config.yaml", 'r') as file:
@@ -478,7 +478,7 @@ def create_topic_based_videos(config_settings, hf_token):
     output_file_name = f"finished_video_{time_stamp}"
     audio_to_video_files = {"0": {"audio_duration": audio_duration, "video_files": ["0_0", "0_1", "0_2"]}}
     try:
-        process_videos_and_audio(audio_to_video_files, output_file_name)
+        process_videos_and_audio(audio_to_video_files, output_file_name, config_settings["mode"])
     except Exception as e:
         logging.critical(f"Failed to process videos and audio - {e}")
         logging.info(f"Audio and video files: {audio_to_video_files}")
@@ -536,6 +536,7 @@ def main():
     #manager_client = ManagerClient(tokens["big_kahuna"])
     #manager_client.register_with_manager()
 
+    os.environ['HF_HOME'] = config_settings["hf_home"]
     mode = config_settings["mode"]
     if mode == 0:
         create_topic_based_videos(config_settings, tokens["huggingface"])
