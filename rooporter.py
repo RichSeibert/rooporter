@@ -448,7 +448,7 @@ def create_topic_based_videos(config_settings, hf_token):
     prompts_today = config["prompts"][day_since_start]
     logging.info(f"Generating videos and audio using the following prompts: {prompts_today}")
     logging.info("Generating videos")
-    video_duration = 5
+    video_duration = 4
     all_video_data = {0: []}
     video_file_names = [f"0_{str(i)}" for i in range(len(prompts_today["videos"])]
     for i, prompt in enumerate(prompts_today["videos"]):
