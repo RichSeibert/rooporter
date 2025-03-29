@@ -488,14 +488,10 @@ def create_topic_based_videos(config_settings, hf_token):
 
     # upload to yt, tiktok, and instagram
     # TODO tiktok, instagram
-    summaries_concatinated = [" ".join(p for p in prompts_today["videos"])]
-    title_prompt_info = PromptInfo(PromptInfo.make_title, summaries_concatinated)
-    generated_title = generate_text(title_prompt_info, config_settings)
     # max title length for youtube is 100 chars
-    generated_title_cut = generated_title[0][:99]
-    # TODO use https://github.com/makiisthenes/TiktokAutoUploader to copy youtube video to tiktok
+    title_cut = prompts_today["title"][:99]
     try:
-        upload_to_youtube("tmp/"+output_file_name+".mp4", generated_title_cut)
+        upload_to_youtube("tmp/"+output_file_name+".mp4", title_cut)
     except Exception as e:
         logging.critical(f"Failed to upload to youtube - {e}")
         return
