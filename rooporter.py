@@ -450,10 +450,11 @@ def create_topic_based_videos(config_settings, hf_token):
     logging.info("Generating videos")
     video_duration = 5
     all_video_data = {0: []}
+    video_file_names = [f"0_{str(i)}" for i in range(len(prompts_today["videos"])]
     for i, prompt in enumerate(prompts_today["videos"]):
         video_data = {"prompt": prompt,
                       "duration": video_duration,
-                      "ttv_output_file_name": f"0_{str(i)}"}
+                      "ttv_output_file_name": video_file_names[i]}
         all_video_data[0].append(video_data)
     try:
         # TODO fix filename, right now it's hardcoded to 0_X.wav
@@ -477,7 +478,7 @@ def create_topic_based_videos(config_settings, hf_token):
 
     time_stamp = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
     output_file_name = f"finished_video_{time_stamp}"
-    audio_to_video_files = {"0": {"audio_duration": audio_duration, "video_files": ["0_0", "0_1", "0_2", "0_3", "0_4"]}}
+    audio_to_video_files = {"0": {"audio_duration": audio_duration, "video_files": video_file_names}}
     try:
         process_videos_and_audio(audio_to_video_files, output_file_name, config_settings["mode"])
     except Exception as e:

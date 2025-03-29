@@ -23,7 +23,7 @@ def generate_videos_hunyuan(audio_id_to_videos_generation_data):
     args.video_size = (960, 544)
     # determine video length from length of voiceover. Framerate is 24
     args.fps = 24
-    args.infer_steps = 30
+    args.infer_steps = 40
     args.use_cpu_offload = True
     args.embedded_cfg_scale = 6.0
     args.flow_shift = 7.0
