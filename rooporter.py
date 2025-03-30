@@ -95,7 +95,7 @@ def process_videos_and_audio(audio_video_mapping, output_file_name, mode):
         temp_list_file = Path("video_list.txt")
         with temp_list_file.open("w") as f:
             for video in video_files:
-                f.write(f"file '{video.resolve()}\n'")
+                f.write(f"file '{video.resolve()}'\n")
 
         # Combine videos associated with the audio file
         combined_video = Path(f"combined_{audio_file.stem}.mp4")
@@ -150,7 +150,7 @@ def process_videos_and_audio(audio_video_mapping, output_file_name, mode):
         if mode == 1:
             f.write("file 'intro_video/intro_video_lower_volume.mp4'\n")
         for video in intermediate_videos:
-            f.write(f"file '{video.resolve()}\n'")
+            f.write(f"file '{video.resolve()}'\n")
 
     combine_all_command = [
         "ffmpeg",
