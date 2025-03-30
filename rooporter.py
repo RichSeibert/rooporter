@@ -68,7 +68,7 @@ def process_videos_and_audio(audio_video_mapping, output_file_name, mode):
         else:
             processed_audio = audio_file
 
-        # Mix with voiceover if applicable
+        # Mix with tts.wav if applicable, adjusting amplitude of original audio to 50%
         if voice_file and voice_file.exists():
             mixed_audio = Path(f"mixed_{audio_file.stem}.m4a")
             mix_command = [
@@ -79,7 +79,7 @@ def process_videos_and_audio(audio_video_mapping, output_file_name, mode):
                 "-i",
                 str(voice_file),
                 "-filter_complex",
-                "[0:a][1:a]amix=inputs=2:duration=longest[a]",
+                "[0:a]volume=0.5[a1];[a1][1:a]amix=inputs=2:duration=longest[a]",
                 "-map",
                 "[a]",
                 "-c:a",
@@ -95,7 +95,7 @@ def process_videos_and_audio(audio_video_mapping, output_file_name, mode):
         temp_list_file = Path("video_list.txt")
         with temp_list_file.open("w") as f:
             for video in video_files:
-                f.write(f"file '{video.resolve()}'\n")
+                f.write(f"file '{video.resolve()}\n'")
 
         # Combine videos associated with the audio file
         combined_video = Path(f"combined_{audio_file.stem}.mp4")
@@ -150,7 +150,7 @@ def process_videos_and_audio(audio_video_mapping, output_file_name, mode):
         if mode == 1:
             f.write("file 'intro_video/intro_video_lower_volume.mp4'\n")
         for video in intermediate_videos:
-            f.write(f"file '{video.resolve()}'\n")
+            f.write(f"file '{video.resolve()}\n'")
 
     combine_all_command = [
         "ffmpeg",
@@ -544,7 +544,7 @@ def create_topic_based_videos(config_settings, hf_token):
     with open("mode_0_config.yaml", "r") as file:
         prompts_config = yaml.safe_load(file)
     # load one set of prompts from config based on day since start day
-    day_since_start = (datetime.now() - datetime(2025, 3, 26)).days
+    day_since_start = (datetime.now() - datetime(2025, 3, 30)).days
     prompts_today = prompts_config["prompts"][day_since_start]
     logging.info(
         "Generating videos and audio using the following prompts: %s", prompts_today
@@ -552,7 +552,7 @@ def create_topic_based_videos(config_settings, hf_token):
     logging.info(
         "Day: %s (start index 1), number of prompts in prompts_config: %s",
         day_since_start + 1,
-        len(prompts_config),
+        len(prompts_config["prompts"]),
     )
     logging.info("Generating videos")
     video_duration = 4
