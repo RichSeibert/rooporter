@@ -34,8 +34,9 @@ def process_videos_and_audio(audio_video_mapping, output_file_name, mode):
     video_path = "tmp/video/"
     for audio_file, audio_file_data in audio_video_mapping.items():
         audio_file = Path(audio_path + audio_file + ".wav")
-        if "voice" in audio_file_data:
-            voice_file = Path(audio_path + audio_file_data["voice"] + ".wav")
+        voice_file = (
+            Path(audio_path + "tts.wav") if "voice" in audio_file_data else None
+        )
         video_files = [
             Path(video_path + video + ".mp4")
             for video in audio_file_data["video_files"]
@@ -46,7 +47,8 @@ def process_videos_and_audio(audio_video_mapping, output_file_name, mode):
             if not file.exists():
                 logging.error("Error: File not found: %s", file)
                 return False
-        # Trim the audio to the specified duration, outputting as M4A with a fixed bitrate
+
+        # Trim the audio to the specified duration, outputting as M4A
         if "audio_duration" in audio_file_data:
             processed_audio = Path(f"trimmed_{audio_file.stem}.m4a")
             trim_command = [
@@ -65,6 +67,29 @@ def process_videos_and_audio(audio_video_mapping, output_file_name, mode):
             subprocess.run(trim_command, check=True)
         else:
             processed_audio = audio_file
+
+        # Mix with voiceover if applicable
+        if voice_file and voice_file.exists():
+            mixed_audio = Path(f"mixed_{audio_file.stem}.m4a")
+            mix_command = [
+                "ffmpeg",
+                "-y",
+                "-i",
+                str(processed_audio),
+                "-i",
+                str(voice_file),
+                "-filter_complex",
+                "[0:a][1:a]amix=inputs=2:duration=longest[a]",
+                "-map",
+                "[a]",
+                "-c:a",
+                "aac",
+                "-b:a",
+                "128k",
+                str(mixed_audio),
+            ]
+            subprocess.run(mix_command, check=True)
+            processed_audio = mixed_audio
 
         # Create a temporary file list for video concatenation
         temp_list_file = Path("video_list.txt")
@@ -112,7 +137,7 @@ def process_videos_and_audio(audio_video_mapping, output_file_name, mode):
 
         # Clean up intermediate files
         combined_video.unlink()
-        if "audio_duration" in audio_file_data:
+        if "audio_duration" in audio_file_data or voice_file:
             processed_audio.unlink()
         temp_list_file.unlink()
 
@@ -183,7 +208,7 @@ def parse_cnn_article(article_url):
             "text": article_text,
             "url": article_url,
         }
-        logging.info("Successfully scraped article: %s", article['url'])
+        logging.info("Successfully scraped article: %s", article["url"])
 
     return article
 
@@ -203,7 +228,9 @@ def scrape_cnn_homepage(url, limit):
     response = requests.get(url)
 
     if response.status_code != 200:
-        logging.error("Failed to retrieve CNN homepage. Status code: %s", response.status_code)
+        logging.error(
+            "Failed to retrieve CNN homepage. Status code: %s", response.status_code
+        )
         return []
 
     soup = BeautifulSoup(response.content, "html.parser")
@@ -519,8 +546,14 @@ def create_topic_based_videos(config_settings, hf_token):
     # load one set of prompts from config based on day since start day
     day_since_start = (datetime.now() - datetime(2025, 3, 26)).days
     prompts_today = prompts_config["prompts"][day_since_start]
-    logging.info("Generating videos and audio using the following prompts: %s", prompts_today)
-    logging.info("Day: %s (start index 1), number of prompts in prompts_config: %s", day_since_start+1, len(prompts_config))
+    logging.info(
+        "Generating videos and audio using the following prompts: %s", prompts_today
+    )
+    logging.info(
+        "Day: %s (start index 1), number of prompts in prompts_config: %s",
+        day_since_start + 1,
+        len(prompts_config),
+    )
     logging.info("Generating videos")
     video_duration = 4
     all_video_data = {0: []}
@@ -560,9 +593,11 @@ def create_topic_based_videos(config_settings, hf_token):
     time_stamp = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
     output_file_name = f"finished_video_{time_stamp}"
     audio_to_video_files = {
-        "0": {"audio_duration": audio_duration,
-              "video_files": video_file_names,
-              "voice_files": "tts"}
+        "0": {
+            "audio_duration": audio_duration,
+            "video_files": video_file_names,
+            "voice_files": "tts",
+        }
     }
     try:
         process_videos_and_audio(
