@@ -9,18 +9,12 @@
 
 ## Mode 0
 1. Generate video and music prompts from an input prompt
-2. Use Wan2.1 to generate videos
+2. Use hunyuan to generate videos
 3. Use stable-audio to generate music
+4. (Optional) generate voice over with Kokoro
 4. Compile it all together
 
 ## Mode 1
-1. Generate video and music prompts from a quote
-2. Generate voice over using kokoro
-3. Use Wan2.1 to generate videos
-4. Use stable-audio to generate music
-5. Compile it all together
-
-## Mode 2
 1. Fetch news articles
 2. Generate one sentence summary and multi-sentence summary
 3. Generate voice readover from multi-sentence summary

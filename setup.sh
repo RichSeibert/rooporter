@@ -104,7 +104,7 @@ if [ ! -L "models" ]; then
     #huggingface-cli download hexgrad/Kokoro-82M --local-dir ../models/Kokoro-82M
 fi
 
-if [ "$MODE" == "2" ]; then
+if [ "$MODE" == "1" ]; then
     if [ ! -d "MeloTTS" ]; then
         echo "Creating MeloTTS"
         git clone https://github.com/myshell-ai/MeloTTS.git

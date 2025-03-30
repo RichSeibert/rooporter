@@ -34,6 +34,8 @@ def process_videos_and_audio(audio_video_mapping, output_file_name, mode):
     video_path = "tmp/video/"
     for audio_file, audio_file_data in audio_video_mapping.items():
         audio_file = Path(audio_path + audio_file + ".wav")
+        if "voice" in audio_file_data:
+            voice_file = Path(audio_path + audio_file_data["voice"] + ".wav")
         video_files = [
             Path(video_path + video + ".mp4")
             for video in audio_file_data["video_files"]
@@ -120,7 +122,7 @@ def process_videos_and_audio(audio_video_mapping, output_file_name, mode):
     # Combine all processed videos into one final output
     final_list_file = Path("final_video_list.txt")
     with final_list_file.open("w") as f:
-        if mode == 2:
+        if mode == 1:
             f.write("file 'intro_video/intro_video_lower_volume.mp4'\n")
         for video in intermediate_videos:
             f.write(f"file '{video.resolve()}'\n")
@@ -506,17 +508,19 @@ def create_news_video(video_type, url, config_settings):
 def create_topic_based_videos(config_settings, hf_token):
     from ai_interfaces.hunyuan_video import generate_videos_hunyuan
     from ai_interfaces.stable_audio import generate_audio
+    from ai_interfaces.kokoro_tts import text_to_speech
 
     # generate videos
     from huggingface_hub import login
 
     login(token=hf_token)
     with open("mode_0_config.yaml", "r") as file:
-        config = yaml.safe_load(file)
+        prompts_config = yaml.safe_load(file)
     # load one set of prompts from config based on day since start day
     day_since_start = (datetime.now() - datetime(2025, 3, 26)).days
-    prompts_today = config["prompts"][day_since_start]
+    prompts_today = prompts_config["prompts"][day_since_start]
     logging.info("Generating videos and audio using the following prompts: %s", prompts_today)
+    logging.info("Day: %s (start index 1), number of prompts in prompts_config: %s", day_since_start+1, len(prompts_config))
     logging.info("Generating videos")
     video_duration = 4
     all_video_data = {0: []}
@@ -550,10 +554,15 @@ def create_topic_based_videos(config_settings, hf_token):
     except Exception as e:
         logging.error("Exception while generating video: %s", e)
 
+    if "voice" in prompts_today:
+        text_to_speech(prompts_today["voice"], "tmp/audio/tts.wav")
+
     time_stamp = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
     output_file_name = f"finished_video_{time_stamp}"
     audio_to_video_files = {
-        "0": {"audio_duration": audio_duration, "video_files": video_file_names}
+        "0": {"audio_duration": audio_duration,
+              "video_files": video_file_names,
+              "voice_files": "tts"}
     }
     try:
         process_videos_and_audio(
@@ -573,15 +582,6 @@ def create_topic_based_videos(config_settings, hf_token):
     except Exception as e:
         logging.critical("Failed to upload to youtube - %s", e)
         return
-
-
-def create_quote_based_videos(config_settings):
-    from ai_interfaces.hunyuan_video import generate_videos_hunyuan
-    from ai_interfaces.stable_audio import generate_audio
-    from ai_interfaces.kokoro_tts import text_to_speech
-
-    logging.critical("Not implemented")
-    return
 
 
 def main():
@@ -625,8 +625,6 @@ def main():
     if mode == 0:
         create_topic_based_videos(config_settings, tokens["huggingface"])
     elif mode == 1:
-        create_quote_based_videos(config_settings)
-    elif mode == 2:
         create_news_videos(config_settings)
 
     # TODO add cleanup for logs and finished video files
