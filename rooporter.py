@@ -26,6 +26,7 @@ from google.auth.transport.requests import Request
 
 from ai_interfaces.llama_cpp import PromptInfo, generate_text
 
+
 def process_videos_and_audio(audio_video_mapping, output_file_name, mode):
     logging.info("Processing videos and audio")
     intermediate_videos = []
@@ -33,7 +34,9 @@ def process_videos_and_audio(audio_video_mapping, output_file_name, mode):
     video_path = "tmp/video/"
     for audio_file, audio_file_data in audio_video_mapping.items():
         audio_file = Path(audio_path + audio_file + ".wav")
-        voice_file = Path(audio_path + "tts.wav") if "voice_files" in audio_file_data else None
+        voice_file = (
+            Path(audio_path + "tts.wav") if "voice_files" in audio_file_data else None
+        )
         video_files = [
             Path(video_path + video + ".mp4")
             for video in audio_file_data["video_files"]
@@ -51,10 +54,14 @@ def process_videos_and_audio(audio_video_mapping, output_file_name, mode):
             trim_command = [
                 "ffmpeg",
                 "-y",
-                "-i", str(audio_file),
-                "-t", str(audio_file_data["audio_duration"]),
-                "-c:a", "aac",
-                "-b:a", "128k",
+                "-i",
+                str(audio_file),
+                "-t",
+                str(audio_file_data["audio_duration"]),
+                "-c:a",
+                "aac",
+                "-b:a",
+                "128k",
                 str(processed_audio),
             ]
             subprocess.run(trim_command, check=True)
@@ -67,12 +74,18 @@ def process_videos_and_audio(audio_video_mapping, output_file_name, mode):
             mix_command = [
                 "ffmpeg",
                 "-y",
-                "-i", str(processed_audio),
-                "-i", str(voice_file),
-                "-filter_complex", "[0:a]volume=0.1[a0];[a0][1:a]amix=inputs=2:duration=longest[a]",
-                "-map", "[a]",
-                "-c:a", "aac",
-                "-b:a", "128k",
+                "-i",
+                str(processed_audio),
+                "-i",
+                str(voice_file),
+                "-filter_complex",
+                "[0:a]volume=0.1[a0];[a0][1:a]amix=inputs=2:duration=longest[a]",
+                "-map",
+                "[a]",
+                "-c:a",
+                "aac",
+                "-b:a",
+                "128k",
                 str(mixed_audio),
             ]
             subprocess.run(mix_command, check=True)
@@ -89,10 +102,14 @@ def process_videos_and_audio(audio_video_mapping, output_file_name, mode):
         combine_command = [
             "ffmpeg",
             "-y",
-            "-f", "concat",
-            "-safe", "0",
-            "-i", str(temp_list_file),
-            "-c", "copy",
+            "-f",
+            "concat",
+            "-safe",
+            "0",
+            "-i",
+            str(temp_list_file),
+            "-c",
+            "copy",
             str(combined_video),
         ]
         subprocess.run(combine_command, check=True)
@@ -102,12 +119,18 @@ def process_videos_and_audio(audio_video_mapping, output_file_name, mode):
         add_audio = [
             "ffmpeg",
             "-y",
-            "-i", str(combined_video),
-            "-i", str(processed_audio),
-            "-c:v", "copy",
-            "-c:a", "aac",
-            "-b:a", "128k",
-            "-strict", "experimental",
+            "-i",
+            str(combined_video),
+            "-i",
+            str(processed_audio),
+            "-c:v",
+            "copy",
+            "-c:a",
+            "aac",
+            "-b:a",
+            "128k",
+            "-strict",
+            "experimental",
             str(audio_video_output),
         ]
         subprocess.run(add_audio, check=True)
@@ -132,12 +155,18 @@ def process_videos_and_audio(audio_video_mapping, output_file_name, mode):
     combine_all_command = [
         "ffmpeg",
         "-y",
-        "-f", "concat",
-        "-safe", "0",
-        "-i", str(final_list_file),
-        "-c:v", "copy",
-        "-crf", "18",
-        "-y", f"tmp/{output_file_name}.mp4",
+        "-f",
+        "concat",
+        "-safe",
+        "0",
+        "-i",
+        str(final_list_file),
+        "-c:v",
+        "copy",
+        "-crf",
+        "18",
+        "-y",
+        f"tmp/{output_file_name}.mp4",
     ]
     subprocess.run(combine_all_command, check=True)
 
@@ -145,6 +174,7 @@ def process_videos_and_audio(audio_video_mapping, output_file_name, mode):
     for video in intermediate_videos:
         video.unlink()
     final_list_file.unlink()
+
 
 def parse_cnn_article(article_url):
     logging.info("Parsing article")
