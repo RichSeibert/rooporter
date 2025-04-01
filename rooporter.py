@@ -556,7 +556,7 @@ def create_topic_based_videos(config_settings, hf_token):
     )
     logging.info("Generating videos")
     video_duration = 4
-    all_video_data = {0: []}
+    all_video_data = {"0": []}
     video_file_names = [f"0_{str(i)}" for i in range(len(prompts_today["videos"]))]
     for i, prompt in enumerate(prompts_today["videos"]):
         video_data = {
@@ -564,7 +564,7 @@ def create_topic_based_videos(config_settings, hf_token):
             "duration": video_duration,
             "ttv_output_file_name": video_file_names[i],
         }
-        all_video_data[0].append(video_data)
+        all_video_data["0"].append(video_data)
     try:
         # TODO fix filename, right now it's hardcoded to 0_X.wav
         generate_videos_hunyuan(all_video_data)
