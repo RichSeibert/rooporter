@@ -427,10 +427,10 @@ def create_news_video(video_type, url, config_settings):
         # {headline, text, url}
         articles = scrape_cnn_homepage(url, config_settings["number_of_articles"])
     except Exception as e:
-        logging.critical("Failed to scrape website - %s", e)
+        logging.error("Failed to scrape website - %s", e)
         return
     if not articles:
-        logging.critical("No articles scraped")
+        logging.error("No articles scraped")
         return
 
     # TODO this is shit
@@ -451,7 +451,7 @@ def create_news_video(video_type, url, config_settings):
             articles_id_and_summary, config_settings["tts_worker_pool_size"]
         )
     except Exception as e:
-        logging.critical("Failed to generate audio - %s", e)
+        logging.error("Failed to generate audio - %s", e)
         logging.info("Article data: %s", articles)
         return
 
@@ -464,7 +464,7 @@ def create_news_video(video_type, url, config_settings):
         ):
             articles[i]["video_prompt"] = video_prompt
     except Exception as e:
-        logging.critical("Failed to generate video prompts - %s", e)
+        logging.error("Failed to generate video prompts - %s", e)
         logging.info("Article data: %s", articles)
         return
 
@@ -498,7 +498,7 @@ def create_news_video(video_type, url, config_settings):
     try:
         audio_to_video_files = generate_videos_hunyuan(video_generation_data)
     except Exception as e:
-        logging.critical("Failed to generate videos - %s", e)
+        logging.error("Failed to generate videos - %s", e)
         logging.info("Video generation data: %s", video_generation_data)
         return
 
@@ -514,7 +514,7 @@ def create_news_video(video_type, url, config_settings):
             audio_to_video_files, output_file_name, config_settings["mode"]
         )
     except Exception as e:
-        logging.critical("Failed to process videos and audio - %s", e)
+        logging.error("Failed to process videos and audio - %s", e)
         logging.info("Audio and video files: %s", audio_to_video_files)
         return
 
@@ -528,7 +528,7 @@ def create_news_video(video_type, url, config_settings):
     try:
         upload_to_youtube("tmp/" + output_file_name + ".mp4", title)
     except Exception as e:
-        logging.critical("Failed to upload to youtube - %s", e)
+        logging.error("Failed to upload to youtube - %s", e)
         return
 
 
@@ -545,14 +545,19 @@ def create_topic_based_videos(config_settings, hf_token):
         prompts_config = yaml.safe_load(file)
     # load one set of prompts from config based on day since start day
     day_since_start = (datetime.now() - datetime(2025, 3, 30)).days
-    prompts_today = prompts_config["prompts"][day_since_start]
-    logging.info(
-        "Generating videos and audio using the following prompts: %s", prompts_today
-    )
     logging.info(
         "Day: %s (start index 1), number of prompts in prompts_config: %s",
         day_since_start + 1,
         len(prompts_config["prompts"]),
+    )
+    if day_since_start >= len(prompts_config["prompts"]):
+        logging.error(
+            "No more prompts. Reset start date and add new prompts to mode_0_config.yaml"
+        )
+        return
+    prompts_today = prompts_config["prompts"][day_since_start]
+    logging.info(
+        "Generating videos and audio using the following prompts: %s", prompts_today
     )
     logging.info("Generating videos")
     video_duration = 4
@@ -570,6 +575,7 @@ def create_topic_based_videos(config_settings, hf_token):
         generate_videos_hunyuan(all_video_data)
     except Exception as e:
         logging.error("Exception while generating video: %s", e)
+        return
 
     logging.info("Generating audio")
     # note - max duration of music is 47 seconds
@@ -585,7 +591,8 @@ def create_topic_based_videos(config_settings, hf_token):
         # TODO fix filename, right now it's hardcoded to 0.wav
         generate_audio(audio_parameters)
     except Exception as e:
-        logging.error("Exception while generating video: %s", e)
+        logging.error("Exception while generating audio: %s", e)
+        return
 
     if "voice" in prompts_today:
         text_to_speech(prompts_today["voice"], "tmp/audio/tts.wav")
@@ -604,7 +611,7 @@ def create_topic_based_videos(config_settings, hf_token):
             audio_to_video_files, output_file_name, config_settings["mode"]
         )
     except Exception as e:
-        logging.critical("Failed to process videos and audio - %s", e)
+        logging.error("Failed to process videos and audio - %s", e)
         logging.info("Audio and video files: %s", audio_to_video_files)
         return
 
@@ -615,7 +622,7 @@ def create_topic_based_videos(config_settings, hf_token):
     try:
         upload_to_youtube("tmp/" + output_file_name + ".mp4", title_cut)
     except Exception as e:
-        logging.critical("Failed to upload to youtube - %s", e)
+        logging.error("Failed to upload to youtube - %s", e)
         return
 
 
@@ -633,7 +640,7 @@ def main():
     config = configparser.ConfigParser()
     config_settings = parse_config(config)
     if not config_settings or not args:
-        logging.critical("Config or args error")
+        logging.error("Config or args error")
         return
 
     with open("tokens.yaml", "r") as file:
