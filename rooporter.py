@@ -544,7 +544,7 @@ def create_topic_based_videos(config_settings, hf_token):
     with open("mode_0_config.yaml", "r") as file:
         prompts_config = yaml.safe_load(file)
     # load one set of prompts from config based on day since start day
-    day_since_start = (datetime.now() - datetime(2025, 3, 30)).days
+    day_since_start = (datetime.now() - datetime(2025, 4, 8)).days
     logging.info(
         "Day: %s (start index 1), number of prompts in prompts_config: %s",
         day_since_start + 1,
