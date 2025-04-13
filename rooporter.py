@@ -544,7 +544,7 @@ def create_topic_based_videos(config_settings, hf_token):
     with open("mode_0_config.yaml", "r") as file:
         prompts_config = yaml.safe_load(file)
     # load one set of prompts from config based on day since start day
-    day_since_start = (datetime.now() - datetime(2025, 4, 8)).days
+    day_since_start = (datetime.now() - datetime(2025, 4, 13)).days
     logging.info(
         "Day: %s (start index 1), number of prompts in prompts_config: %s",
         day_since_start + 1,
@@ -664,10 +664,13 @@ def main():
 
     os.environ["HF_HOME"] = config_settings["hf_home"]
     mode = config_settings["mode"]
-    if mode == 0:
-        create_topic_based_videos(config_settings, tokens["huggingface"])
-    elif mode == 1:
-        create_news_videos(config_settings)
+    try:
+        if mode == 0:
+            create_topic_based_videos(config_settings, tokens["huggingface"])
+        elif mode == 1:
+            create_news_videos(config_settings)
+    except Exception as e:
+        logging.error("Error: Something went wrong: %s", e)
 
     # TODO add cleanup for logs and finished video files
     manager_client.notify_task_completed()
