@@ -5,7 +5,7 @@
 ## About
 This project creates AI generated videos and uploads them to YouTube. There are two modes which are explained below.
 
-This project can be ran standalone manually, but can also be setup with the `big_kahuna` project to run automatically on a schedule.
+This project can be ran standalone manually, but can also be setup with the `[bigkahuna](https://github.com/RichSeibert/bigkahuna)` project to run automatically on a schedule.
 
 ## Mode Descriptions
 Move 0: Specific topic videos. Fill out the `mode_0_config.yaml` with prompts for video, audio, music, and YouTube title
