@@ -26,10 +26,13 @@ Mode 1: Scrapes CNN news articles and creates narration videos. No manual config
 5. Combine video and readover
 6. Upload to tiktok/youtube shorts
 
-## GPU machine setup
-1. Transfer required files to instance with `transfer_files_to_runpod.sh <port> <ip>`
-2. Login to huggingface-cli with "huggingface-cli login". Run `bash setup.sh`. For a fresh install, it will install all required packages/files
-3. Update `config.ini` with settings that work with instance.
+## Usage and setup
+1. Setup a RunPod network volumn and start an instance
+2. Transfer required files to instance with `transfer_files_to_runpod.sh <port> <ip>`
+3. Login to huggingface-cli with "huggingface-cli login". Run `bash setup.sh`. For a fresh install, it will install all required packages/files
+4. Update `config.ini` with settings that you want, like what mode to run in. Note, some of the settings depend on how much VRAM the instance has. You will need 48GB of VRAM to run this
+5. Activate the venv and run `python rooporter`. You will have to comment out the client stuff when running manually
+6. [Optional] Setup host machine by following the steps below
 
 ## Host machine setup
 1. Setup aws instance and clone big_kahuna repo
